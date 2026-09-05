@@ -46,7 +46,7 @@ MMB4M is not the CMM2 firmware. It is MMBasic for Linux 0.8, an alpha from its d
 
 ## What is different
 
-The language is MMBasic and the reference is the [PicoMite User Manual](https://geoffg.net/Downloads/picomite/PicoMite_User_Manual.pdf). This is what a Mac does differently.
+The language is MMBasic, and each machine's page carries its current user manual: [PicoMite](https://geoffg.net/picomite.html) and [PicoMite VGA](https://geoffg.net/picomitevga.html), the manual MMB4L follows and therefore the one this port follows, and [Colour Maximite 2](https://geoffg.net/maximite.html), whose firmware is a separate release of MMBasic with a manual of its own. This is what a Mac does differently.
 
 | What | On a Mac | Details |
 | --- | --- | --- |
