@@ -63,6 +63,6 @@ Untested on a Mac.
 
 `MM.INFO$(DEVICE X)` gives the real device even while simulating another one.
 
-`MM.VER` is an integer here, not a float, so a comparison against a decimal fails.
+`MM.VER` is an integer here, not a float, so a comparison against a decimal fails. It carries MMB4M's own version, as `MM.INFO(VERSION)` does, not the version of the MMBasic for Linux release underneath; the changelog records that.
 
 `MM.INFO$(ENVVAR name$)` reads an environment variable and `MM.INFO$(OPTION x)` any option's current value.
