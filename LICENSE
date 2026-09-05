@@ -1,0 +1,49 @@
+MMBasic for MacOS (MMB4M)
+=========================
+
+An overview of what covers what. This file is not itself a licence, and where it
+and a licence text disagree, the licence text wins.
+
+MMB4M as a whole is covered by MMBasic's own modified BSD license, five numbered
+conditions, in licenses/MMB4L/LICENSE.MMBasic. Some source files are dual-licensed with the MIT
+License in licenses/MMB4L/LICENSE.MIT, and say so in their header comments.
+
+Those two are MMB4L's own licence files, reproduced word for word as their terms
+require, which is why they are headed "MMBasic for Linux". Other third-party code
+in src/ carries its own attributions in the file headers.
+
+
+Copyright
+---------
+
+  Copyright 2011-2026 Geoff Graham
+  Copyright 2016-2026 Peter Mather
+  Copyright 2021-2026 Thomas Hugo Williams
+  Copyright 2026 Thomas Schimana
+
+The interpreter is MMBasic by Geoff Graham and Peter Mather, ported to Linux by
+Thomas Hugo Williams as MMB4L, https://github.com/thwill1000/mmb4l. MMB4L was
+derived with permission from MMBasic for DOS and takes code and ideas from the
+PicoMite, PicoMite VGA, Colour Maximite 2 and Windows versions.
+
+The last line above is this port's, and it is an addition to the startup banner
+rather than a replacement, which clause 4 of licenses/MMB4L/LICENSE.MMBasic
+allows. The original message stays. What this port changes is the macOS build
+target, PATH_MAX from the macOS header, the baud rates macOS termios does not
+define, the default editor, and that banner line.
+
+SDL2, https://libsdl.org, is compiled into the released binaries and is covered by
+the zlib licence.
+
+
+Two clauses that matter to a port
+---------------------------------
+
+Clause 4: the name "MMBasic" is used when referring to the interpreter, and the
+original copyright message is displayed on the console at startup. These two are
+also the conditions under which Geoff Graham gave permission for this port, in
+correspondence of 2026-08-25.
+
+Clause 5: advertising material mentioning features or use of this software must
+acknowledge that it includes software developed by Geoff Graham, Peter Mather and
+Thomas Hugo Williams.

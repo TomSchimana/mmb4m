@@ -1,0 +1,102 @@
+/*-*****************************************************************************
+
+MMBasic for Linux (MMB4L)
+
+prompt.h
+
+Copyright 2022-2025 Geoff Graham, Peter Mather and Thomas Hugo Williams.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holders nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+4. The name MMBasic be used when referring to the interpreter in any
+   documentation and promotional material and the original copyright message
+   be displayed  on the console at startup (additional copyright messages may
+   be added).
+
+5. All advertising materials mentioning features or use of this software must
+   display the following acknowledgement: This product includes software
+   developed by Geoff Graham, Peter Mather and Thomas Hugo Williams.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+*******************************************************************************/
+
+#if !defined(MMB4L_PROMPT_H)
+#define MMB4L_PROMPT_H
+
+#include "mmresult.h"
+#include "options.h"
+
+typedef struct {
+    char backup[STRINGSIZE];
+    char buf[STRINGSIZE];
+    size_t char_index;  // Insertion point
+    int history_idx;
+    bool insert;
+    bool finished;
+} PromptState;
+
+/**
+ * Gets a character from the prompt input.
+ *
+ * Will wait forever for input. If the char is a LF then replace it with a CR
+ * unless it was preceded by a CR in which case throw away the char so end of
+ * line is always a CR.
+ *
+ * @param[in]   ch  pointer to store the character.
+ * @return          kOk on success, error code on failure.
+ */
+MmResult prompt_getc(int *ch);
+
+/**
+ * @brief Implements the MMBasic prompt.
+ *
+ * On exit the global 'inpbuf' will contain what was typed at the prompt.
+ */
+MmResult prompt_get_input(void);
+
+/**
+ * @brief Performs path completion on the contents of the global 'inpbuf'.
+ */
+MmResult prompt_handle_tab(PromptState *pstate);
+
+/**
+ * Restores the command history from a file.
+ *
+ * @param[in]   filepath  path to the history file.
+ *                        If NULL/empty restores from the default location
+ * @return                kOk on success, error code on failure
+ */
+MmResult prompt_restore_history(const char *filepath);
+
+/**
+ * Saves the command history to a file.
+ *
+ * @param[in]   filepath  path to the history file.
+ *                        If NULL/empty saves to the default location
+ * @return                kOk on success, error code on failure
+ */
+MmResult prompt_save_history(const char *filepath);
+
+#endif // #if !defined(MMB4L_PROMPT_H)

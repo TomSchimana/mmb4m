@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: MMB4L itself
+    url: https://github.com/thwill1000/mmb4l/issues
+    about: If the same thing happens on Linux, it belongs upstream, not here.
+  - name: The Back Shed forum
+    url: https://www.thebackshed.com/forum/ViewForum.php?FID=16
+    about: Where the MMBasic community discusses all of this.

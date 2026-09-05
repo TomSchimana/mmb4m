@@ -1,0 +1,10 @@
+# Made by make. Everything here is reproducible from src/.
+build/
+bin/
+
+# macOS leftovers
+.DS_Store
+
+# MMBasic writes a log into the working directory at startup
+mmb4l.log
+mmb4l_*.log
