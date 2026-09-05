@@ -6,8 +6,8 @@ MMBasic is Geoff Graham's and Peter Mather's BASIC for the Colour Maximite and t
 
 Download the zip for your Mac from the [latest release](https://github.com/TomSchimana/mmb4m/releases/latest):
 
-- `mmb4m-0.1.0-silicon.zip` for Apple Silicon, any Mac with an M-series chip
-- `mmb4m-0.1.0-intel.zip` for an Intel Mac
+- `mmb4m-0.1.1-silicon.zip` for Apple Silicon, any Mac with an M-series chip
+- `mmb4m-0.1.1-intel.zip` for an Intel Mac
 
 Each holds the single file `mmbasic`.
 
@@ -65,7 +65,7 @@ The language is MMBasic 6, and each machine's page carries its current user manu
 | `OPTION CODEPAGE` | Decides how bytes 128 to 255 print. A terminal is Unicode and a Colour Maximite 2 screen is not, so `OPTION CODEPAGE CMM2` is needed before a CMM2 program's box characters come out right. It lasts for the session, not beyond | [Options](docs/options.md) |
 | Command line | `mmbasic prog.bas` runs and exits, `-i` stays at the prompt afterwards, `-d` sets the starting directory, `-s` simulates another device, `-l` sets the log level, `-v` prints the version | [Running MMB4M](docs/running.md) |
 | CMM2 programs | Start with `-s "Colour Maximite 2"`, or `-s CMM2` for short. Do not switch device from inside a running program: that faults at the next graphics command | [Colour Maximite 2 programs](docs/cmm2.md) |
-| This version | 0.1.0, one known defect, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
+| This version | 0.1.1, one known defect, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
 | Building it | One `make`, with the Xcode Command Line Tools and cmake. SDL2 is compiled in, so the result is a single file | [Building MMB4M](docs/building.md) |
 
 ## This is not an official release
@@ -86,4 +86,4 @@ MMBasic's own modified BSD licence, five numbered conditions, reproduced word fo
 
 ## First version
 
-MMB4M 0.1.0 is the first version of this port, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).
+MMB4M 0.1.1 is an early version of this port, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).

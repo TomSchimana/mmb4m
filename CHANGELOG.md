@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1, 2026-09-05
+
+Fixes `INPUT` and `LINE INPUT` from the console. In 0.1.0 both printed their prompt and then stopped with `Invalid file number` before reading a single character. Built from the same MMB4L tree as 0.1.0, branch `develop-v0.8-8`, commit `529fded`.
+
+`MMgetline()` asks `streamio_is_file()` whether it is reading a file before each character it collects. The console is file number 0, and `streamio_is_file()` was the one function in `streamio.c` that handed 0 to the file-number check instead of answering it first; that check rejects anything below 1. The defect is in MMBasic for Linux, not in this port, and is not specific to macOS.
+
 ## 0.1.0, 2026-09-05
 
 First version. Runs on Apple Silicon and Intel, one zip per architecture: `mmb4m-0.1.0-silicon.zip` and `mmb4m-0.1.0-intel.zip`, each holding the single file `mmbasic`.

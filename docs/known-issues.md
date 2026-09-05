@@ -1,6 +1,6 @@
 [← MMB4M](../README.md)
 
-# Known problems in 0.1.0
+# Known problems in 0.1.1
 
 Defects in this version, and what has not been tested. For the things a Mac will never do, see [what MMB4M cannot do](limits.md).
 
