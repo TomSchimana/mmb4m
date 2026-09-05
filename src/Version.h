@@ -69,10 +69,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #elif defined(__APPLE__)
     #define __mmb4l__
     #if defined(__aarch64__)
-        #define MM_ARCH  "Darwin aarch64"
+        #define MM_ARCH  "macOS arm64"
         #define ENV64BIT
     #elif defined(__x86_64)
-        #define MM_ARCH  "Darwin x86_64"
+        #define MM_ARCH  "macOS x86_64"
         #define ENV64BIT
     #else
         #error This architecture is not supported
@@ -91,7 +91,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if defined(__mmb4l__)
     #define MM_DEVICE     "MMB4L"
-#if defined(__ANDROID__)
+#if defined(MMB4M_MAJOR)
+    // MMB4M has its own version, passed in by the build from VERSION in the
+    // root of the port. It is the port's number and moves independently of
+    // MMB4L's; which MMB4L state a build sits on is recorded in
+    // sources/<tree>/ORIGIN.md and in the changelog.
+    #define MM_MAJOR      MMB4M_MAJOR
+    #define MM_MINOR      MMB4M_MINOR
+    #define MM_MICRO      MMB4M_MICRO
+    #define BUILD_NUMBER  0
+#elif defined(__ANDROID__)
     #define MM_MAJOR      1
     #define MM_MINOR      0
     #define MM_MICRO      1

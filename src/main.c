@@ -104,27 +104,17 @@ void dump_token_table(const struct s_tokentbl* tbl);
 static bool run_flag;
 
 static MmResult get_name_and_version(char *buf, size_t buf_sz) {
+    // Upstream reads a micro below 100 as an alpha and spells the version
+    // '0.8-alpha.1'. That is MMB4L's release scheme. MMB4M numbers its own
+    // releases plainly, so the three parts are printed as they are.
     (void) snprintf(
         buf,
         buf_sz,
-        "MMBasic for %s v%d.%d%s%d",
+        "MMBasic for %s v%d.%d.%d",
         MM_ARCH,
         MM_MAJOR,
         MM_MINOR,
-        MM_MICRO < 100
-            ? "-alpha."
-            : MM_MICRO < 200
-                ? "-beta."
-                : MM_MICRO < 300
-                    ? "-rc."
-                    : ".",
-        MM_MICRO < 100
-            ? MM_MICRO
-            : MM_MICRO < 200
-                ? MM_MICRO - 100
-                : MM_MICRO < 300
-                    ? MM_MICRO - 200
-                    : MM_MICRO - 300);
+        MM_MICRO);
     return kOk;
 }
 

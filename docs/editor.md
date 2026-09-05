@@ -9,6 +9,8 @@ EDIT
 
 `EDIT` opens MMBasic's own full-screen editor, the one a PicoMite has, in the terminal. Without a filename it edits the current program file, the one `LOAD` or `RUN` set.
 
+`LIST`, `EDIT` and `RUN` read the file from disk first, so what you see and what runs is always what is in the file. A change made in another window is picked up by the next command, and MMBasic never holds a copy that differs from the file.
+
 The key list stands at the bottom of the screen.
 
 ```

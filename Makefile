@@ -15,6 +15,18 @@
 
 VERSION := $(shell cat VERSION 2>/dev/null || echo unknown)
 
+# The port's version reaches the binary from this one file, so the banner,
+# --version and MM.INFO$(VERSION) cannot drift from what is packaged and
+# released. Version.h uses these when they are defined; without them a build
+# would silently report MMB4L's version instead, which is what happened once.
+V_PARTS := $(subst ., ,$(VERSION))
+ifneq ($(words $(V_PARTS)),3)
+    $(error VERSION reads '$(VERSION)', expected three parts like 0.1.0)
+endif
+VERSION_FLAGS := -DMMB4M_MAJOR=$(word 1,$(V_PARTS)) \
+                 -DMMB4M_MINOR=$(word 2,$(V_PARTS)) \
+                 -DMMB4M_MICRO=$(word 3,$(V_PARTS))
+
 # Quiet by default. `make V=1` prints every command in full.
 ifeq ($(V),1)
     Q :=
@@ -74,7 +86,7 @@ DEPS    := $(OBJECTS:.o=.d)
 # logs at Info level, writing mmb4l.log into the working directory on every run.
 COMMON_FLAGS := -arch $(MACH) -mmacosx-version-min=$(MACOS_MIN) \
                 -I src -I $(SDL_PREFIX)/include/SDL2 -I $(SDL_PREFIX)/include \
-                -funsigned-char -w -O2 -DNDEBUG -MMD -MP
+                -funsigned-char -w -O2 -DNDEBUG -MMD -MP $(VERSION_FLAGS)
 
 .PHONY: all clean distclean help
 .DEFAULT_GOAL := all

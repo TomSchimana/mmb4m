@@ -59,7 +59,7 @@ Untested on a Mac.
 
 ## What the interpreter knows about itself
 
-`MM.INFO(ARCH)` answers `Darwin aarch64` or `Darwin x86_64`. `MM.INFO$(DEVICE)` answers `MMB4L`, or the simulated device when started with `-s`. `MM.INFO$(DEVICE X)` always answers `MMB4L`.
+`MM.INFO(ARCH)` answers `macOS arm64` or `macOS x86_64`. `MM.INFO$(DEVICE)` answers `MMB4L`, or the simulated device when started with `-s`. `MM.INFO$(DEVICE X)` always answers `MMB4L`.
 
 `MM.INFO$(DEVICE X)` gives the real device even while simulating another one.
 
