@@ -96,7 +96,12 @@ static MmResult cmd_mode_picomite_vga(void) {
 }
 
 void cmd_mode(void) {
-    if (!mmb_features.has_cmd_mode) ON_FAILURE_ERROR(kUnsupportedOnCurrentDevice);
+    if (!mmb_features.has_cmd_mode) {
+        // Name the devices that have MODE instead of only refusing.
+        error_throw_ex(kError, "Unsupported on current device/platform. "
+                       "MODE needs mmbasic -s CMM2 or mmbasic -s PicoMiteVGA");
+        return;
+    }
 
     MmResult result = kOk;
     switch (mmb_features.graphics_type) {

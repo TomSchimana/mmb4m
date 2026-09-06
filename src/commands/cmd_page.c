@@ -111,7 +111,12 @@ static MmResult cmd_page_xor_pixels(const char *p) {
 }
 
 void cmd_page(void) {
-    if (!mmb_features.has_cmd_page) ON_FAILURE_ERROR(kUnsupportedOnCurrentDevice);
+    if (!mmb_features.has_cmd_page) {
+        // Name the devices that have PAGE instead of only refusing.
+        error_throw_ex(kError, "Unsupported on current device/platform. "
+                       "PAGE needs mmbasic -s CMM2");
+        return;
+    }
 
     MmResult result = kOk;
     const char *p;

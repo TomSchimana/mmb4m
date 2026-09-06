@@ -37,7 +37,7 @@ There is no `SAVE` command for programs: you edit the real file, and F1 writes i
 
 ## Using your own editor instead
 
-`OPTION EDITOR` exists only here. A PicoMite or a Colour Maximite 2 has no choice of editor.
+`OPTION EDITOR` exists only here. A Colour Maximite 2 or a PicoMite has no choice of editor.
 
 ```basic
 OPTION EDITOR VIM

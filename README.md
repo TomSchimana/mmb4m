@@ -13,8 +13,8 @@ brew install mmbasic
 
 By hand, download the zip for your Mac from the [latest release](https://github.com/TomSchimana/mmb4m/releases/latest):
 
-- `mmb4m-0.1.1-silicon.zip` for Apple Silicon, any Mac with an M-series chip
-- `mmb4m-0.1.1-intel.zip` for an Intel Mac
+- `mmb4m-0.1.2-silicon.zip` for Apple Silicon, any Mac with an M-series chip
+- `mmb4m-0.1.2-intel.zip` for an Intel Mac
 
 Each holds the single file `mmbasic`.
 
@@ -53,27 +53,27 @@ MMB4M is not the CMM2 firmware. It is MMBasic for Linux 0.8, an alpha from its d
 
 ## What is different
 
-The language is MMBasic 6, and each machine's page carries its current user manual: [PicoMite](https://geoffg.net/picomite.html) and [PicoMite VGA](https://geoffg.net/picomitevga.html), the manual MMB4L follows and therefore the one this port follows, and [Colour Maximite 2](https://geoffg.net/maximite.html), whose firmware is a separate release of MMBasic with a manual of its own. This is what a Mac does differently.
+The language is MMBasic 6, and each machine's page carries its current user manual: [Colour Maximite 2](https://geoffg.net/maximite.html), whose firmware is a separate release of MMBasic with a manual of its own, and [PicoMite](https://geoffg.net/picomite.html) with [PicoMite VGA](https://geoffg.net/picomitevga.html), the manual MMB4L follows and therefore the one this port follows. This is what a Mac does differently.
 
 | What | On a Mac | Details |
 | --- | --- | --- |
 | `MODE`, `PAGE` | There are no screen modes. A program opens its own window with `GRAPHICS WINDOW 0, 640, 480` and draws into it. Both commands do work when MMB4M is started with `-s "Colour Maximite 2"` | [Graphics](docs/graphics.md) |
-| `FRAMEBUFFER` | Not implemented, and Colour Maximite 2 mode does not bring it back. PicoMite mode does. `GRAPHICS BUFFER` with `GRAPHICS COPY` draws off-screen the same way | [What MMB4M cannot do](docs/limits.md) |
+| `FRAMEBUFFER` | Not implemented. Colour Maximite 2 mode does not bring it back, PicoMite mode does. `GRAPHICS BUFFER` with `GRAPHICS COPY` draws off-screen the same way | [What MMB4M cannot do](docs/limits.md) |
 | `PRINT` | Writes to the terminal, never to a graphics surface, in Colour Maximite 2 mode as well. `TEXT x, y, s$` draws onto the surface `GRAPHICS WRITE` selected | [Graphics](docs/graphics.md) |
 | `SETPIN`, `PIN`, `PULSE`, `FLASH` | A Mac has no microcontroller pins, so there is nothing to switch to | [What MMB4M cannot do](docs/limits.md) |
 | Serial | Nothing above 230400 baud; macOS defines no higher rate, and setting one fails. Ports are named `/dev/cu.*`, which `ls /dev/cu.*` lists | [What MMB4M cannot do](docs/limits.md) |
 | Timing | macOS is not a real-time system, so `PAUSE` and `SETTICK` drift more than on a microcontroller. `SETTICK` works, `SETTICK FAST` does not | [What MMB4M cannot do](docs/limits.md) |
 | `EDIT` | Opens MMBasic's own full-screen editor in the terminal, the one both machines have: F1 saves, F2 saves and runs, ESC leaves. `OPTION EDITOR VIM`, `VSCODE`, `NANO` or a command of your own switches to another editor, `OPTION EDITOR INTERNAL` switches back | [Editing programs](docs/editor.md) |
 | `SAVE` | Not needed: the file on disk is the program, and F1 in the editor writes it. `SAVE "prog.bas"` answers `Unknown SAVE subcommand`, because `SAVE IMAGE` does exist | [Editing programs](docs/editor.md) |
-| `GAMEPAD` | `DEVICE GAMEPAD OPEN` and `CLOSE` instead, for a controller connected to the Mac. The function `GAMEPAD()` is not there | [What exists here and not on a PicoMite or a Colour Maximite 2](docs/commands.md) |
+| `GAMEPAD` | `DEVICE GAMEPAD OPEN` and `CLOSE` instead, for a controller connected to the Mac. The function `GAMEPAD()` is not there | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
 | `!cmd` | At the prompt, short for `SYSTEM`: `!ls` lists the directory. `!cd foo` is the exception and becomes `CHDIR "foo"`, because every other command runs in a forked process | [Running MMB4M](docs/running.md) |
-| `MM.INFO$(DEVICE)` | Answers `MMB4L`, the device this port is built from, so a program written for MMBasic for Linux recognises the machine it is on. Under `-s` it answers the simulated device, while `MM.INFO$(DEVICE X)` keeps answering `MMB4L`. That is how this release behaves. A later version may answer `MMB4M` instead, with a way to keep programs written for the Linux device working | [What exists here and not on a PicoMite or a Colour Maximite 2](docs/commands.md) |
-| `CONSOLE` | Sets the colours, the cursor and the title of the terminal. `CONSOLE GETSIZE` reads its size, which a terminal can change and neither machine's screen can | [What exists here and not on a PicoMite or a Colour Maximite 2](docs/commands.md) |
+| `MM.INFO$(DEVICE)` | Answers `MMB4L`, the device this port is built from, so a program written for MMBasic for Linux recognises the machine it is on. Under `-s` it answers the simulated device, while `MM.INFO$(DEVICE X)` keeps answering `MMB4L`. That is how this release behaves. A later version may answer `MMB4M` instead, with a way to keep programs written for the Linux device working | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
+| `CONSOLE` | Sets the colours, the cursor and the title of the terminal. `CONSOLE GETSIZE` reads its size, which a terminal can change and neither machine's screen can | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
 | `OPTION CODEPAGE` | Decides how bytes 128 to 255 print. A terminal is Unicode and a Colour Maximite 2 screen is not, so `OPTION CODEPAGE CMM2` is needed before a CMM2 program's box characters come out right. It lasts for the session, not beyond | [Options](docs/options.md) |
 | Command line | `mmbasic prog.bas` runs and exits, `-i` stays at the prompt afterwards, `-d` sets the starting directory, `-s` simulates another device, `-l` sets the log level, `-v` prints the version | [Running MMB4M](docs/running.md) |
 | CMM2 programs | Start with `-s "Colour Maximite 2"`, or `-s CMM2` for short. Do not switch device from inside a running program: that faults at the next graphics command | [Colour Maximite 2 programs](docs/cmm2.md) |
 | PicoMite programs | Start with `-s PicoMiteVGA`, or one of `PicoMiteHDMI`, `PicoMiteVGAUSB`, `PicoCalc`, `Game*Mite`. `MODE` and `FRAMEBUFFER` come back, `PAGE` does not | [PicoMite programs](docs/picomite.md) |
-| This version | 0.1.1, two known defects, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
+| This version | 0.1.2, no known defects, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
 | Building it | One `make`, with the Xcode Command Line Tools and cmake. SDL2 is compiled in, so the result is a single file | [Building MMB4M](docs/building.md) |
 
 ## This is not an official release
@@ -92,6 +92,6 @@ The [changelog](CHANGELOG.md) records which MMBasic for Linux commit each versio
 
 MMBasic's own modified BSD licence, five numbered conditions, reproduced word for word in [LICENSE.MMBasic](licenses/MMB4L/LICENSE.MMBasic). [LICENSE](LICENSE) says who holds what.
 
-## First version
+## Alpha
 
-MMB4M 0.1.1 is an early version of this port, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).
+MMB4M is at alpha status, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).

@@ -1,6 +1,6 @@
 [← MMB4M](../README.md)
 
-# What exists here and not on a PicoMite or a Colour Maximite 2
+# What exists here and not on a Colour Maximite 2 or a PicoMite
 
 What a Mac adds: the terminal, the operating system, USB controllers, and the things MMBasic reports about itself. Where a device is named below, the claim was checked against that device's own manual. The [MMBasic for Linux README](https://github.com/thwill1000/mmb4l#readme) carries the full syntax for most of it, though it is behind the interpreter in places.
 
@@ -49,7 +49,7 @@ IF DEVICE(GAMEPAD 1, B) AND &b1 THEN PRINT "R"
 
 Up to four controllers, ids 1 to 4, read through SDL. `DEVICE GAMEPAD OPEN`, `CLOSE`, `RUMBLE`, `RUMBLE TRIGGERS`, `LED`, `INTERRUPT ENABLE` and `INTERRUPT DISABLE`, and the function `DEVICE(GAMEPAD id, funct)` where `B` returns a bitmap of the digital buttons and `LX`, `LY`, `RX`, `RY`, `L` and `R` the analog axes and triggers.
 
-A PicoMite reads USB controllers with its own `GAMEPAD` commands and the same `DEVICE(GAMEPAD ...)` function, with different subcommands: `COLOUR` and `HAPTIC` there against `LED` and `RUMBLE` here. A Colour Maximite 2 has neither and reads Wii Classic controllers over I2C.
+A Colour Maximite 2 has none of this and reads Wii Classic controllers over I2C. A PicoMite reads USB controllers with its own `GAMEPAD` commands and the same `DEVICE(GAMEPAD ...)` function, with different subcommands: `COLOUR` and `HAPTIC` there against `LED` and `RUMBLE` here.
 
 `MM.INFO$(GAMEPAD id%)` gives SDL's identification string for an attached controller, and the empty string when none is attached.
 
