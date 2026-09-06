@@ -11,8 +11,6 @@ brew tap TomSchimana/mmbasic
 brew install mmbasic
 ```
 
-`brew upgrade mmbasic` takes you to the next version. This route picks the build for your processor, puts `mmbasic` on the `PATH`, and needs no `xattr` step, because macOS marks browser downloads and not files fetched by Homebrew.
-
 By hand, download the zip for your Mac from the [latest release](https://github.com/TomSchimana/mmb4m/releases/latest):
 
 - `mmb4m-0.1.1-silicon.zip` for Apple Silicon, any Mac with an M-series chip
