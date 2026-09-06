@@ -8,7 +8,7 @@ Start the interpreter as a Colour Maximite 2 and most of what a CMM2 program exp
 mmbasic -s "Colour Maximite 2" prog.bas
 ```
 
-`CMM2` works as a short form. The other devices are `PicoMiteVGA`, `PicoMiteHDMI`, `PicoMiteVGAUSB`, `PicoCalc`, `Game*Mite` and `MMBasic for Windows`.
+`CMM2` works as a short form. The other devices are the PicoMites, see [PicoMite programs](picomite.md), and `MMBasic for Windows`.
 
 Do not set `OPTION SIMULATE` inside the program. It faults at the next graphics command, see [known problems](known-issues.md).
 
@@ -27,6 +27,10 @@ The window is scaled up as far as your display allows. `OPTION AUTOSCALE OFF` st
 `PRINT` writes to the terminal, never to a graphics surface, simulation included. `TEXT` draws.
 
 `SETPIN`, `PIN`, `PULSE` and `FLASH` are not available; they address microcontroller pins.
+
+`FRAMEBUFFER` stays unavailable in this mode, although a Colour Maximite 2 has it.
+
+The program in flash memory does not exist here, and `EDIT` works on files only. See [editing programs](editor.md).
 
 Timing drifts. macOS is not a real-time system, so `PAUSE` and `SETTICK` vary more than on a CMM2, and a program tuned to hardware frame timing runs differently. Sound and colour go through SDL2 and are close, not identical.
 

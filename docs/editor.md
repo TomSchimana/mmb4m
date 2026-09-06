@@ -7,9 +7,20 @@ EDIT "myprogram.bas"
 EDIT
 ```
 
-`EDIT` opens MMBasic's own full-screen editor, the one a PicoMite has, in the terminal. Without a filename it edits the current program file, the one `LOAD` or `RUN` set.
+`EDIT` opens MMBasic's own full-screen editor, the one both devices have, in the terminal. Without a filename it edits the current program file, the one `LOAD` or `RUN` set.
 
 `LIST`, `EDIT` and `RUN` read the file from disk first, so what you see and what runs is always what is in the file. A change made in another window is picked up by the next command, and MMBasic never holds a copy that differs from the file.
+
+## Not the same as on a PicoMite
+
+A PicoMite holds the program itself in flash memory, and there `EDIT` and `EDIT "prog.bas"` work on two different things: the copy in flash, and a file on the SD card. F2 runs the program only in the first case.
+
+MMB4M works the way a Colour Maximite 2 does. There is no second copy anywhere: "the current program" is a filename, set by `LOAD`, `RUN` or `EDIT "prog.bas"`, and the editor always edits that file.
+
+- `EDIT` without a filename and without a current program answers `Error: Nothing to edit`, and the editor does not open. A CMM2 says exactly the same.
+- F2 saves and runs, whether the editor was opened with a filename or without.
+
+So a program written for a PicoMite that relies on the flash copy behaves differently here. One written on a CMM2 does not.
 
 The key list stands at the bottom of the screen.
 

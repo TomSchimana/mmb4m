@@ -16,7 +16,7 @@ Most of `OPTION` behaves as the PicoMite manual says. These are the ones that ma
 
 `OPTION EDITOR` picks what `EDIT` opens, see [editing programs](editor.md).
 
-`OPTION AUDIO OFF` silences everything. Audio interrupts stop firing with it.
+`OPTION AUDIO OFF` silences everything. Audio interrupts stop firing with it. On a PicoMite the same option assigns the audio pins, and a Colour Maximite 2 has no `OPTION AUDIO` at all.
 
 ## Keeping them
 

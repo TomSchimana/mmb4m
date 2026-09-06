@@ -12,8 +12,8 @@ They report `Unsupported on current device/platform` rather than failing to pars
 
 | Not available | Instead |
 | --- | --- |
-| `MODE`, `PAGE` | [the `GRAPHICS` commands](graphics.md), or start as a [simulated CMM2](cmm2.md) |
-| `FRAMEBUFFER` | [the `GRAPHICS` commands](graphics.md). Colour Maximite 2 mode does not bring it back |
+| `MODE`, `PAGE` | [the `GRAPHICS` commands](graphics.md), or start as a [simulated CMM2](cmm2.md). `MODE` also comes back as a [simulated PicoMite](picomite.md), `PAGE` does not |
+| `FRAMEBUFFER` | [the `GRAPHICS` commands](graphics.md). Colour Maximite 2 mode does not bring it back, [PicoMite mode](picomite.md) does |
 | `SETPIN`, `PIN`, `PULSE`, `FLASH` | nothing. Microcontroller hardware |
 | `GAMEPAD` | `DEVICE GAMEPAD`. The function `GAMEPAD()` is unsupported as well |
 
