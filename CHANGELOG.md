@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3, 2026-09-28
+
+Fixes PLAY TONE, and withdraws two commands that were never finished. Now built from MMBasic for Linux 0.8 alpha 1, branch `main`, commit `8e98d84`.
+
+- `PLAY TONE` plays the right channel, at its own frequency. Before, `PLAY TONE 440, 660` sounded 440 Hz on the left and nothing on the right
+- `MM.INFO(CURRENT FUNCTION)` and `LIST CALLS` are gone. Both were unfinished in 0.1.0 to 0.1.2, and upstream withdrew them for this release
+- fonts 8 and 9 from the PicoMite
+- sound is handed to macOS in blocks of 1024 samples instead of one at a time, upstream's fix against crackling
+
 ## 0.1.2, 2026-09-06
 
 Fixes four defects: two crashes, one command that wrote a file it should not, and one refusal that said nothing useful.

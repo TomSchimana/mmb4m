@@ -13,8 +13,8 @@ brew install mmbasic
 
 By hand, download the zip for your Mac from the [latest release](https://github.com/TomSchimana/mmb4m/releases/latest):
 
-- `mmb4m-0.1.2-silicon.zip` for Apple Silicon, any Mac with an M-series chip
-- `mmb4m-0.1.2-intel.zip` for an Intel Mac
+- `mmb4m-0.1.3-silicon.zip` for Apple Silicon, any Mac with an M-series chip
+- `mmb4m-0.1.3-intel.zip` for an Intel Mac
 
 Each holds the single file `mmbasic`.
 
@@ -73,7 +73,7 @@ The language is MMBasic 6, and each machine's page carries its current user manu
 | Command line | `mmbasic prog.bas` runs and exits, `-i` stays at the prompt afterwards, `-d` sets the starting directory, `-s` simulates another device, `-l` sets the log level, `-v` prints the version | [Running MMB4M](docs/running.md) |
 | CMM2 programs | Start with `-s "Colour Maximite 2"`, or `-s CMM2` for short. Do not switch device from inside a running program: that faults at the next graphics command | [Colour Maximite 2 programs](docs/cmm2.md) |
 | PicoMite programs | Start with `-s PicoMiteVGA`, or one of `PicoMiteHDMI`, `PicoMiteVGAUSB`, `PicoCalc`, `Game*Mite`. `MODE` and `FRAMEBUFFER` come back, `PAGE` does not | [PicoMite programs](docs/picomite.md) |
-| This version | 0.1.2, no known defects, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
+| This version | 0.1.3, no known defects, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
 | Building it | One `make`, with the Xcode Command Line Tools and cmake. SDL2 is compiled in, so the result is a single file | [Building MMB4M](docs/building.md) |
 
 ## This is not an official release
