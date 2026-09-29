@@ -94,4 +94,4 @@ MMBasic's own modified BSD licence, five numbered conditions, reproduced word fo
 
 ## Alpha
 
-MMB4M is at alpha status, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).
+MMB4M is at alpha status, built and tested by one person on one Apple Silicon Mac. Not everything has been tried; [known problems](docs/known-issues.md) says what has and what has not. What comes next is in the [roadmap](ROADMAP.md). If something does not work, open an [issue](https://github.com/TomSchimana/mmb4m/issues) or get in touch through [schimana.net](https://schimana.net). Questions about MMBasic itself belong on [The Back Shed](https://www.thebackshed.com/forum/ViewForum.php?FID=16).
