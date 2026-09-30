@@ -140,6 +140,7 @@ static MmResult on_number(const char *p) {
         // this is a GOSUB, same as a GOTO but we need to first push the return pointer.
         if (gosubindex >= MAXGOSUB) ERROR_TOO_MANY_NESTED_GOSUB;
         errorstack[gosubindex] = CurrentLinePtr;
+        substack[gosubindex] = NULL;
         gosubstack[gosubindex++] = nextstmt;
         LocalIndex++;
     }

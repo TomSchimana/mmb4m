@@ -121,15 +121,13 @@ void cmd_dim(void) {
             if (cmdtoken == cmdSTATIC) {
                 if (LocalIndex == 0) error_throw_legacy("Invalid here");
                 // Create a unique global name by prefixing variable name with sub/fun name.
-                char function_name[MAXVARLEN + 2];
-                ON_FAILURE_ERROR(get_current_function_name(function_name, sizeof(function_name)));
-                if (FAILED(cstring_cpy(VarName, function_name, sizeof(function_name)))) ERROR_LINE_LENGTH;
-                for (k = 1; k <= MAXVARLEN; k++) {
-                    if (!isnamechar(VarName[k])) {
-                        VarName[k] = 0;                             // terminate the string on a non valid char
-                        break;
-                    }
-                }
+                const char *def = NULL;
+                for (k = gosubindex - 1; k >= 0 && def == NULL; k--) def = substack[k];
+                if (def == NULL) error_throw_legacy("Invalid here");
+                def += sizeof(CommandToken);
+                skipspace(def);
+                for (k = 0; k < MAXVARLEN && isnamechar(def[k]); k++) VarName[k] = def[k];
+                VarName[k] = 0;
                 if (FAILED(cstring_cat(VarName, argv[i], sizeof(VarName)))) ERROR_LINE_LENGTH;
                 StaticVar = true;
             } else {

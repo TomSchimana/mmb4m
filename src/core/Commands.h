@@ -77,6 +77,7 @@ extern int doindex;
 
 extern const char *gosubstack[MAXGOSUB];
 extern const char *errorstack[MAXGOSUB];
+extern const char *substack[MAXGOSUB];
 extern int gosubindex;
 extern bool DimUsed;
 

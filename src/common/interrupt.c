@@ -148,6 +148,7 @@ static bool handle_interrupt(const char *interrupt_address) {
     if (token == cmdSUB) {
         if (gosubindex >= MAXGOSUB) ERROR_TOO_MANY_SUBS;
         errorstack[gosubindex] = CurrentLinePtr;
+        substack[gosubindex] = interrupt_address;
         gosubstack[gosubindex++] = DUMMY_IRETURN;  // Return from the subroutine to the dummy IRETURN command.
         skipelement(interrupt_address);            // Point to the body of the SUB.
         interrupt_legacy = false;
@@ -219,6 +220,7 @@ static bool handle_window_interrupt() {
     interrupt_return_stmt = nextstmt;                             //   for when IRETURN is executed
     if (gosubindex >= MAXGOSUB) ERROR_TOO_MANY_SUBS;
     errorstack[gosubindex] = CurrentLinePtr;
+    substack[gosubindex] = fn->addr;
     gosubstack[gosubindex++] = DUMMY_IRETURN;  // Return from the subroutine to the dummy IRETURN command.
     interrupt_legacy = false;
 

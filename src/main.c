@@ -538,6 +538,7 @@ int main(int argc, char *argv[]) {
         ExecuteProgram(tknbuf);  // execute the line straight away
     }
 
+    ON_FAILURE_LOG(streamio_close_all());
     ON_FAILURE_LOG(prompt_save_history(""));
 
     console_term(); // Restore original terminal settings before exiting.

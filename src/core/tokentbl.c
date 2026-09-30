@@ -186,6 +186,12 @@ const struct s_tokentbl tokentbl[] = {
     { "And",         T_OPER | T_INT,                 7, op_and       },
     { "Or",          T_OPER | T_INT,                 7, op_or        },
     { "Xor",         T_OPER | T_INT,                 7, op_xor       },
+    { "MM.FontHeight", T_FNA | T_INT,    0, fun_mmfontheight },
+    { "MM.FontWidth", T_FNA | T_INT,     0, fun_mmfontwidth },
+    { "MM.Height",   T_FNA | T_INT,      0, fun_mmheight },
+    { "MM.HPos",     T_FNA | T_INT,      0, fun_mmhpos   },
+    { "MM.VPos",     T_FNA | T_INT,      0, fun_mmvpos   },
+    { "MM.Width",    T_FNA | T_INT,      0, fun_mmwidth  },
 
     { "",            0,                              0, cmd_null,    }  // This dummy entry is always at the end.
 };

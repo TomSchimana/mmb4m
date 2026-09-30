@@ -6,12 +6,12 @@ It is preliminary and can change as the work goes on.
 
 ## 0.1.4: fixes
 
-- [ ] Calculations at the edges of the number range give wrong results, and infinity prints as garbage.
-- [ ] Repeated matrix calculations run out of memory.
-- [ ] A static variable in a subroutine can be shared by mistake with another subroutine.
-- [ ] Some built-in system values, such as the font height, read as zero.
-- [ ] Opening a tenth file at the same time hangs.
-- [ ] A program close to the memory limit can crash instead of reporting that it is too long.
+- [x] Calculations at the edges of the number range give wrong results, and infinity prints as garbage. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
+- [x] Repeated matrix calculations run out of memory. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
+- [x] A static variable in a subroutine can be shared by mistake with another subroutine. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
+- [x] Some built-in system values, such as the font height, read as zero. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
+- [x] Opening a tenth file at the same time hangs. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
+- [x] A program close to the memory limit can crash instead of reporting that it is too long. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
 
 ## 0.2: the language catches up
 
@@ -64,6 +64,12 @@ Programs written for these machines run unchanged.
 
 - [ ] The editor's newer features, online help and a file manager.
 - [ ] Network connections and serial ports.
+
+## Under consideration
+
+Ideas that are not decided yet.
+
+- [ ] Limits of a chosen PicoMite model, so a program written for it runs into the same limits on the Mac.
 
 ## Not planned
 

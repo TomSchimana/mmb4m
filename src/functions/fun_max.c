@@ -53,8 +53,8 @@ void do_max_min(int cmp) {
     MMFLOAT nbr, f;
     getargs(&ep, (MAX_ARG_COUNT * 2) - 1, DELIM_COMMA);
     if((argc & 1) != 1) ERROR_SYNTAX;
-    if(cmp) nbr = -FLT_MAX; else nbr = FLT_MAX;
-    for(i = 0; i < argc; i += 2) {
+    nbr = getnumber(argv[0]);
+    for(i = 2; i < argc; i += 2) {
         f = getnumber(argv[i]);
         if(cmp && f > nbr) nbr = f;
         if(!cmp && f < nbr) nbr = f;

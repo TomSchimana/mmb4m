@@ -86,8 +86,9 @@ void fun_abs(void) {
     MMFLOAT f;
     MMINTEGER i64;
 
-    targ = T_INT;
+    targ = T_NOTYPE;
     (void) evaluate(ep, &f, &i64, &s, &targ, false);                 // get the value and type of the argument
+    if (targ & T_STR) error_throw_legacy("Expected a number");
     if (targ & T_NBR) {
         fret = fabs(f);
     } else {
@@ -155,7 +156,7 @@ void fun_exp(void) {
 
 // Truncate an expression to the next whole number less than or equal to the argument.
 void fun_int(void) {
-    iret = floor(getnumber(ep));
+    iret = FloatToInt64(floor(getnumber(ep)));
     targ = T_INT;
 }
 
@@ -164,7 +165,7 @@ void fun_int(void) {
 // Truncate a number to a whole number by eliminating the decimal point and all characters
 // to the right of the decimal point.
 void fun_fix(void) {
-    iret = getnumber(ep);
+    iret = FloatToInt64(trunc(getnumber(ep)));
     targ = T_INT;
 }
 

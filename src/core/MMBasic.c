@@ -653,6 +653,7 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
 
     if(gosubindex >= MAXGOSUB) error("Too many nested SUB/FUN");
     errorstack[gosubindex] = caller_state.line_ptr;
+    substack[gosubindex] = SubLinePtr;
     gosubstack[gosubindex++] = isfun ? NULL : nextstmt;             // NULL signifies that this is returned to by ending ExecuteProgram()
 
     // allocate memory for processing the arguments
@@ -2472,6 +2473,10 @@ void FloatToStr(char *p, MMFLOAT f, int m, int n, unsigned char ch) {
     MMFLOAT rounding;
     char *pp;
 
+    if(isinf(f) || isnan(f)) {
+        strcpy(p, isnan(f) ? "NAN" : (f > 0 ? "INF" : "-INF"));
+        return;
+    }
     ch &= 0x7f;                                                     // make sure that ch is an ASCII char
     if(f == 0)
         exp = 0;
@@ -2673,13 +2678,13 @@ MmResult SwitchPlatform(OptionsSimulate platform) {
 
 #if defined(__mmb4l__)
 int32_t FloatToInt32(MMFLOAT x) {
-    if (x < (MMFLOAT) LONG_MIN - 0.5 || x > (MMFLOAT) LONG_MAX + 0.5)
+    if (isnan(x) || x < (MMFLOAT) INT32_MIN - 0.5 || x > (MMFLOAT) INT32_MAX + 0.5)
         error("Number too large");
     return x >= 0 ? (int32_t)(x + 0.5) : (int32_t)(x - 0.5);
 }
 
 int64_t FloatToInt64(MMFLOAT x) {
-    if (x < (MMFLOAT) LLONG_MIN - 0.5 || x > (MMFLOAT) LLONG_MAX + 0.5)
+    if (isnan(x) || x < -9223372036854775808.0 || x >= 9223372036854775808.0)
         error("Number too large");
     if ((x < -FLOAT_ROUNDING_LIMIT) || (x > FLOAT_ROUNDING_LIMIT))
         return (int64_t) x;

@@ -1307,7 +1307,7 @@ void cmd_math(void){
 			}
 			det=determinant(matrix,n);
 			if(det==0.0){
-				dealloc2df(matrix,numcols,numrows);
+				dealloc2df(matrix,n,n);
 				error_throw_legacy("Determinant of array is zero");
 			}
 			MMFLOAT **matrix1=alloc2df(n,n);
@@ -1317,8 +1317,8 @@ void cmd_math(void){
 					*a2float++=matrix1[j][i];
 				}
 			}
-			dealloc2df(matrix,numcols,numrows);
-			dealloc2df(matrix1,numcols,numrows);
+			dealloc2df(matrix,n,n);
+			dealloc2df(matrix1,n,n);
 
 			return;
 		}
@@ -1974,7 +1974,7 @@ void fun_math(void){
 			if(argc>5 && *argv[6])startmask=getint(argv[6],0,255);
 			if(argc>7 && *argv[8])endmask=getint(argv[8],0,255);
 			if(argc>9 && *argv[10])reverseIn=getint(argv[10],0,1);
-			if(argc==13 && *argv[12])reverseOut=getint(argv[10],0,1);
+			if(argc==13 && *argv[12])reverseOut=getint(argv[12],0,1);
 			for(i=0;i<length;i++){
 				if(a1float){
 					if(a1float[i]>255)error_throw_legacy("Variable > 255");
@@ -2009,7 +2009,7 @@ void fun_math(void){
 			if(argc>5 && *argv[6])startmask=getint(argv[6],0,4095);
 			if(argc>7 && *argv[8])endmask=getint(argv[8],0,4095);
 			if(argc>9 && *argv[10])reverseIn=getint(argv[10],0,1);
-			if(argc==13 && *argv[12])reverseOut=getint(argv[10],0,1);
+			if(argc==13 && *argv[12])reverseOut=getint(argv[12],0,1);
 			for(i=0;i<length;i++){
 				if(a1float){
 					if(a1float[i]>255)error_throw_legacy("Variable > 255");
@@ -2044,7 +2044,7 @@ void fun_math(void){
 			if(argc>5 && *argv[6])startmask=getint(argv[6],0,65535);
 			if(argc>7 && *argv[8])endmask=getint(argv[8],0,65535);
 			if(argc>9 && *argv[10])reverseIn=getint(argv[10],0,1);
-			if(argc==13 && *argv[12])reverseOut=getint(argv[10],0,1);
+			if(argc==13 && *argv[12])reverseOut=getint(argv[12],0,1);
 			for(i=0;i<length;i++){
 				if(a1float){
 					if(a1float[i]>255)error_throw_legacy("Variable > 255");
@@ -2079,7 +2079,7 @@ void fun_math(void){
 			if(argc>5 && *argv[6])startmask=getint(argv[6],0,0xFFFFFFFF);
 			if(argc>7 && *argv[8])endmask=getint(argv[8],0,0xFFFFFFFF);
 			if(argc>9 && *argv[10])reverseIn=getint(argv[10],0,1);
-			if(argc==13 && *argv[12])reverseOut=getint(argv[10],0,1);
+			if(argc==13 && *argv[12])reverseOut=getint(argv[12],0,1);
 			for(i=0;i<length;i++){
 				if(a1float){
 					if(a1float[i]>255)error_throw_legacy("Variable > 255");
@@ -2228,11 +2228,11 @@ void fun_math(void){
 				getargs(&tp, 1, DELIM_COMMA);
 				if(!(argc == 1)) error_throw_legacy("Argument count");
 				parsenumberarray(argv[0],&a1float,&a1int,1,2,dims, false);
-				numcols=dims[0];
-				numrows=dims[1];
-				df=numcols*numrows;
-				numcols+=(1-mmb_options.base);
-				numrows+=(1-mmb_options.base);
+				numcols=dims[0]+1-mmb_options.base;
+				numrows=dims[1]+1-mmb_options.base;
+				df=(numcols-1)*(numrows-1);
+				if(df<1)error_throw_legacy("Needs at least 2 rows and 2 columns");
+				if(df>50)error_throw_legacy("Too many degrees of freedom (max 50)");
 				MMFLOAT **observed=alloc2df(numcols,numrows);
 				MMFLOAT **expected=alloc2df(numcols,numrows);
 				rows=alloc1df(numrows);
@@ -2875,13 +2875,14 @@ void cofactor(MMFLOAT **matrix,MMFLOAT **newmatrix,int size)
 MMFLOAT determinant(MMFLOAT **matrix,int size)
 {
    MMFLOAT s=1,det=0;
-   MMFLOAT **m_minor=alloc2df(size,size);
    int i,j,m,n,c;
+   if (size==0)
+       return 1;
    if (size==1)
    {
        return (matrix[0][0]);
    }
-   else
+   MMFLOAT **m_minor=alloc2df(size,size);
    {
        det=0;
        for (c=0;c<size;c++)

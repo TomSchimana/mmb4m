@@ -674,6 +674,30 @@ static void mminfo_writebuff(const char *p) {
                    "MMB4L does not support direct access to display WriteBuff");
 }
 
+void fun_mmfontheight(void) {
+    mminfo_fontheight("");
+}
+
+void fun_mmfontwidth(void) {
+    mminfo_fontwidth("");
+}
+
+void fun_mmheight(void) {
+    mminfo_vres("C", false);
+}
+
+void fun_mmhpos(void) {
+    mminfo_hpos("");
+}
+
+void fun_mmvpos(void) {
+    mminfo_vpos("");
+}
+
+void fun_mmwidth(void) {
+    mminfo_hres("C", false);
+}
+
 void fun_mminfo(void) {
     const char *p;
     if ((p = checkstring(ep, "ARCH"))) {

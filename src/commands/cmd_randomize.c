@@ -46,9 +46,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 
 #include "../common/mmb4l.h"
+#include "../common/mmtime.h"
 
 void cmd_randomize(void) {
     int i;
-    i = getint(cmdline, 0, INT_MAX);
+    getargs(&cmdline, 1, DELIM_COMMA);
+    if (argc == 1)
+        i = getint(argv[0], 0, INT_MAX);
+    else
+        i = (mmtime_now_ns() / 1000) & 0x7FFFFFFF;
     srand(i);
 }

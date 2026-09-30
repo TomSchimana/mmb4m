@@ -284,8 +284,9 @@ static void program_internal_alloc() {
     program_file_stack->size = 0;
     program_progmem_insert = ProgMemory;
 
-    // 4 characters are required for termination with 2-3 '\0' and a '\xFF'.
-    program_progmem_limit = ProgMemory + PROG_FLASH_SIZE - 5;
+    // 4 characters are required for termination with 2-3 '\0' and a '\xFF',
+    // up to 7 to align CFunctionFlash and 8 for the end of the CFunction area.
+    program_progmem_limit = ProgMemory + PROG_FLASH_SIZE - 20;
 }
 
 /**

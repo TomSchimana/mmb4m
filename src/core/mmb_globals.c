@@ -58,5 +58,8 @@ int gosubindex;
 
 const char *errorstack[MAXGOSUB];
 
+/** The SUB/FUNCTION each frame runs, NULL for a GOSUB; STATIC is named after it */
+const char *substack[MAXGOSUB];
+
 /** Used to catch use of OPTION BASE after DIM has been used */
 bool DimUsed = false;

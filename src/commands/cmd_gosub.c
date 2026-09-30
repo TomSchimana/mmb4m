@@ -55,6 +55,7 @@ void cmd_gosub(void) {
     // Do not update the interpreter state until successfully finding
     // the target line/label.
     errorstack[gosubindex] = CurrentLinePtr;
+    substack[gosubindex] = NULL;
     gosubstack[gosubindex++] = return_to;
     LocalIndex++;
     CurrentLinePtr = nextstmt;

@@ -92,10 +92,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if defined(__mmb4l__)
     #define MM_DEVICE     "MMB4L"
 #if defined(MMB4M_MAJOR)
-    // MMB4M has its own version, passed in by the build from VERSION in the
-    // root of the port. It is the port's number and moves independently of
-    // MMB4L's; which MMB4L state a build sits on is recorded in
-    // sources/<tree>/ORIGIN.md and in the changelog.
+    // MMB4M: version from VERSION, passed in by the build.
     #define MM_MAJOR      MMB4M_MAJOR
     #define MM_MINOR      MMB4M_MINOR
     #define MM_MICRO      MMB4M_MICRO
