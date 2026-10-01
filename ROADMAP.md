@@ -15,7 +15,7 @@ It is preliminary and can change as the work goes on.
 
 ## 0.2: more PicoMite commands, higher limits
 
-Programs written for a current PicoMite use language features MMB4M does not have yet. This release adds them.
+Programs written for a current PicoMite use language features MMB4M does not have yet. This release adds many of them.
 
 - [x] `BIT()` and `BYTE()`, to read and set single bits of a number and single bytes of a string. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
 - [x] Arrays with more than 32767 elements per dimension, and more memory for them. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
