@@ -1,4 +1,4 @@
-[← MMB4M](../README.md)
+[← Documentation](README.md)
 
 # Graphics
 
@@ -66,4 +66,4 @@ With no surface selected they describe the terminal in pixels of a nominal 8x12 
 
 ## MODE and PAGE
 
-Both come back when you start the interpreter as a Colour Maximite 2. See [Colour Maximite 2 programs](cmm2.md).
+Both come back when you start the interpreter as a Colour Maximite 2, and `MODE` also as a PicoMite. See [Colour Maximite 2 programs](cmm2.md) and [PicoMite programs](picomite.md).

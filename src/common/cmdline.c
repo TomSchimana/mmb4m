@@ -51,6 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "error.h"
 #include "features.h"
 #include "logger.h"
+#include "options.h"
 #include "parse.h"
 #include "utility.h"
 
@@ -160,6 +161,38 @@ MmResult cmdline_parse(int argc, const char *argv[], CmdLineArgs *out) {
     return kOk;
 }
 
+/**
+ * The -s line names every device -s knows, each by its short form, the last
+ * of its names in options_simulate_map, so a device added there shows here.
+ */
+static void print_simulate_usage(void) {
+    char devices[512] = "";
+    for (const NameOrdinalPair *e = options_simulate_map; e->name; ++e) {
+        if (e->ordinal == kSimulateUnspecified) continue;
+        if (e[1].name && e[1].ordinal == e->ordinal) continue;
+        if (*devices) strcat(devices, ", ");
+        strcat(devices, e->name);
+    }
+    strcat(devices, ".");
+
+    // Wrapped at 79 columns, continuation lines under the description.
+    fprintf(stderr, "  -s <device>        simulate a device:");
+    size_t col = 37;
+    for (const char *p = devices; *p; ) {
+        const char *q = strchr(p, ' ');
+        const size_t n = q ? (size_t) (q - p) : strlen(p);
+        if (col + 1 + n > 79) {
+            fprintf(stderr, "\n                    ");
+            col = 20;
+        }
+        fprintf(stderr, " %.*s", (int) n, p);
+        col += 1 + n;
+        if (!q) break;
+        p = q + 1;
+    }
+    fprintf(stderr, "\n");
+}
+
 void cmdline_print_usage() {
     fprintf(stderr, "Usage: mmbasic [OPTION]... [<file.bas>]\n");
     fprintf(stderr, "\n");
@@ -175,7 +208,7 @@ void cmdline_print_usage() {
     fprintf(stderr, "                     of automatically exiting.\n");
     fprintf(stderr, "  -l <level>         set initial log level: None, Debug, Info, Warning, Error.\n");
     fprintf(stderr, "  --log <level>\n");
-    fprintf(stderr, "  -s <device>        simulate the specified device.\n");
+    print_simulate_usage();
     fprintf(stderr, "  --simulate <device>\n");
     fprintf(stderr, "  -v, --version      display version and copyright and exit.\n");
 }

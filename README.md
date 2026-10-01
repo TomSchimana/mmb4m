@@ -1,6 +1,8 @@
 # MMBasic for MacOS (MMB4M)
 
-MMBasic is Geoff Graham's and Peter Mather's BASIC for the Colour Maximite and the PicoMite. Thomas Hugo Williams ported it to Linux as [MMBasic for Linux](https://github.com/thwill1000/mmb4l). MMB4M takes that port and builds it for the Mac.
+MMBasic is Geoff Graham's and Peter Mather's BASIC for the Colour Maximite and the PicoMite. Thomas Hugo Williams ported it to Linux as [MMBasic for Linux](https://github.com/thwill1000/mmb4l). MMB4M takes that port, builds it for the Mac and adds commands from the current PicoMite.
+
+The [documentation](docs/README.md) covers running, editing and building MMB4M, what works differently on a Mac, and where to find the MMBasic manuals.
 
 ## Install
 
@@ -51,28 +53,30 @@ mmbasic -s "Colour Maximite 2" prog.bas
 
 MMB4M is not the CMM2 firmware. It is MMBasic for Linux 0.8, an alpha from its development branch, and its language follows MMBasic 6.0 for the PicoMite. The Colour Maximite 2 mode simulates the device name, `MODE`, `PAGE` and the controllers. That is enough to write and test a CMM2 program's logic at a desk; graphics, sound and timing are close, not identical.
 
-## What is different
+## Mac specifics
 
-The language is MMBasic 6, and each machine's page carries its current user manual: [Colour Maximite 2](https://geoffg.net/maximite.html), whose firmware is a separate release of MMBasic with a manual of its own, and [PicoMite](https://geoffg.net/picomite.html) with [PicoMite VGA](https://geoffg.net/picomitevga.html), the manual MMB4L follows and therefore the one this port follows. This is what a Mac does differently.
+The language is MMBasic 6, and each machine's page carries its current user manual: [Colour Maximite 2](https://geoffg.net/maximite.html), whose firmware is a separate release of MMBasic with a manual of its own, and [PicoMite](https://geoffg.net/picomite.html) with [PicoMite VGA](https://geoffg.net/picomitevga.html), the manual MMB4L follows and therefore the one this port follows. Most of it works on a Mac as on those machines. The table shows where the Mac does things its own way.
 
 | What | On a Mac | Details |
 | --- | --- | --- |
-| `MODE`, `PAGE` | There are no screen modes. A program opens its own window with `GRAPHICS WINDOW 0, 640, 480` and draws into it. Both commands do work when MMB4M is started with `-s "Colour Maximite 2"` | [Graphics](docs/graphics.md) |
-| `FRAMEBUFFER` | Not implemented. Colour Maximite 2 mode does not bring it back, PicoMite mode does. `GRAPHICS BUFFER` with `GRAPHICS COPY` draws off-screen the same way | [What MMB4M cannot do](docs/limits.md) |
-| `PRINT` | Writes to the terminal, never to a graphics surface, in Colour Maximite 2 mode as well. `TEXT x, y, s$` draws onto the surface `GRAPHICS WRITE` selected | [Graphics](docs/graphics.md) |
-| `SETPIN`, `PIN`, `PULSE`, `FLASH` | A Mac has no microcontroller pins, so there is nothing to switch to | [What MMB4M cannot do](docs/limits.md) |
-| Serial | Nothing above 230400 baud; macOS defines no higher rate, and setting one fails. Ports are named `/dev/cu.*`, which `ls /dev/cu.*` lists | [What MMB4M cannot do](docs/limits.md) |
-| Timing | macOS is not a real-time system, so `PAUSE` and `SETTICK` drift more than on a microcontroller. `SETTICK` works, `SETTICK FAST` does not | [What MMB4M cannot do](docs/limits.md) |
 | `EDIT` | Opens MMBasic's own full-screen editor in the terminal, the one both machines have: F1 saves, F2 saves and runs, ESC leaves. `OPTION EDITOR VIM`, `VSCODE`, `NANO` or a command of your own switches to another editor, `OPTION EDITOR INTERNAL` switches back | [Editing programs](docs/editor.md) |
-| `SAVE` | Not needed: the file on disk is the program, and F1 in the editor writes it. `SAVE "prog.bas"` answers `Unknown SAVE subcommand`, because `SAVE IMAGE` does exist | [Editing programs](docs/editor.md) |
-| `GAMEPAD` | `DEVICE GAMEPAD OPEN` and `CLOSE` instead, for a controller connected to the Mac. The function `GAMEPAD()` is not there | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
-| `!cmd` | At the prompt, short for `SYSTEM`: `!ls` lists the directory. `!cd foo` is the exception and becomes `CHDIR "foo"`, because every other command runs in a forked process | [Running MMB4M](docs/running.md) |
-| `MM.INFO$(DEVICE)` | Answers `MMB4L`, the device this port is built from, so a program written for MMBasic for Linux recognises the machine it is on. Under `-s` it answers the simulated device, while `MM.INFO$(DEVICE X)` keeps answering `MMB4L`. That is how this release behaves. A later version may answer `MMB4M` instead, with a way to keep programs written for the Linux device working | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
-| `CONSOLE` | Sets the colours, the cursor and the title of the terminal. `CONSOLE GETSIZE` reads its size, which a terminal can change and neither machine's screen can | [What exists here and not on a Colour Maximite 2 or a PicoMite](docs/commands.md) |
-| `OPTION CODEPAGE` | Decides how bytes 128 to 255 print. A terminal is Unicode and a Colour Maximite 2 screen is not, so `OPTION CODEPAGE CMM2` is needed before a CMM2 program's box characters come out right. It lasts for the session, not beyond | [Options](docs/options.md) |
 | Command line | `mmbasic prog.bas` runs and exits, `-i` stays at the prompt afterwards, `-d` sets the starting directory, `-s` simulates another device, `-l` sets the log level, `-v` prints the version | [Running MMB4M](docs/running.md) |
-| CMM2 programs | Start with `-s "Colour Maximite 2"`, or `-s CMM2` for short. Do not switch device from inside a running program: that faults at the next graphics command | [Colour Maximite 2 programs](docs/cmm2.md) |
+| CMM2 programs | Start with `-s "Colour Maximite 2"`, or `-s CMM2` for short, rather than switching device from inside the program | [Colour Maximite 2 programs](docs/cmm2.md) |
 | PicoMite programs | Start with `-s PicoMiteVGA`, or one of `PicoMiteHDMI`, `PicoMiteVGAUSB`, `PicoCalc`, `Game*Mite`. `MODE` and `FRAMEBUFFER` come back, `PAGE` does not | [PicoMite programs](docs/picomite.md) |
+| `!cmd` | At the prompt, short for `SYSTEM`: `!ls` lists the directory. `!cd foo` is the exception and becomes `CHDIR "foo"`, because every other command runs in a forked process | [Running MMB4M](docs/running.md) |
+| `CONSOLE` | Sets the colours, the cursor and the title of the terminal. `CONSOLE GETSIZE` reads its size, which a terminal can change and neither machine's screen can | [What MMB4M adds](docs/commands.md) |
+| `MODE`, `PAGE` | There are no screen modes. A program opens its own window with `GRAPHICS WINDOW 0, 640, 480` and draws into it. Both commands do work when MMB4M is started with `-s "Colour Maximite 2"` | [Graphics](docs/graphics.md) |
+| `PRINT` | Writes to the terminal, never to a graphics surface, in Colour Maximite 2 mode as well. `TEXT x, y, s$` draws onto the surface `GRAPHICS WRITE` selected | [Graphics](docs/graphics.md) |
+| `SAVE` | The file on disk is the program, and F1 in the editor writes it. `SAVE "copy.bas"` writes a copy of it, `SAVE IMAGE` a picture and `SAVE DATA` bytes from memory | [Editing programs](docs/editor.md) |
+| `GAMEPAD` | `DEVICE GAMEPAD OPEN` and `CLOSE` instead, for a controller connected to the Mac. The function `GAMEPAD()` is not there | [What MMB4M adds](docs/commands.md) |
+| `MM.INFO$(DEVICE)` | Answers `MMB4L`, the device this port is built from, so a program written for MMBasic for Linux recognises the machine it is on. Under `-s` it answers the simulated device, while `MM.INFO$(DEVICE X)` keeps answering `MMB4L`. That is how this release behaves. A later version may answer `MMB4M` instead, with a way to keep programs written for the Linux device working | [What MMB4M adds](docs/commands.md) |
+| `OPTION CODEPAGE` | Decides how bytes 128 to 255 print. A terminal is Unicode and a Colour Maximite 2 screen is not, so `OPTION CODEPAGE CMM2` is needed before a CMM2 program's box characters come out right. It lasts for the session, not beyond | [Options](docs/options.md) |
+| `FRAMEBUFFER` | Not implemented. Colour Maximite 2 mode does not bring it back, PicoMite mode does. `GRAPHICS BUFFER` with `GRAPHICS COPY` draws off-screen the same way | [Differences](docs/differences.md) |
+| `CSUB`, `CFUNCTION` | Load and are skipped, but calling one stops the program, because the machine code in it is for another processor | [Differences](docs/differences.md) |
+| `SETPIN`, `PIN`, `PULSE`, `FLASH` | A Mac has no microcontroller pins, so there is nothing to switch to | [Differences](docs/differences.md) |
+| Serial | Nothing above 230400 baud; macOS defines no higher rate, and setting one fails. Ports are named `/dev/cu.*`, which `ls /dev/cu.*` lists | [Differences](docs/differences.md) |
+| Timing | macOS is not a real-time system, so `PAUSE` and `SETTICK` drift more than on a microcontroller. `SETTICK` works, `SETTICK FAST` does not | [Differences](docs/differences.md) |
+| Limits | 128 MB for variables, arrays and strings, 1 MB of program, 2048 variables and 128 open files, the figures of MMBasic for Windows | [Limits](docs/limits.md) |
 | This version | 0.2.0, one known defect (pasting into the editor), and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
 | Building it | One `make`, with the Xcode Command Line Tools and cmake. SDL2 is compiled in, so the result is a single file | [Building MMB4M](docs/building.md) |
 
@@ -84,7 +88,7 @@ Geoff Graham gave permission on 2026-08-25 on two conditions: the name "MMBasic"
 
 ## Credit and licence
 
-MMBasic is the work of **Geoff Graham** and **Peter Mather**. [MMBasic for Linux](https://github.com/thwill1000/mmb4l), including its graphics, sound and console, is the work of **Thomas Hugo Williams**, and it is his interpreter you are running. MMB4M changes what is needed to build and run it on a Mac and nothing else.
+MMBasic is the work of **Geoff Graham** and **Peter Mather**. [MMBasic for Linux](https://github.com/thwill1000/mmb4l), including its graphics, sound and console, is the work of **Thomas Hugo Williams**, and it is his interpreter you are running. MMB4M adds what is needed to build and run it on a Mac, and since 0.2 many commands from the PicoMite and the Colour Maximite 2.
 
 My thanks to Thomas Hugo Williams for years of work on MMB4L, and for the permission to build on it. Without that work there would be no Mac version.
 

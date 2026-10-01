@@ -1,4 +1,4 @@
-[← MMB4M](../README.md)
+[← Documentation](README.md)
 
 # Building MMB4M
 

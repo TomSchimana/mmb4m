@@ -115,6 +115,9 @@ typedef struct {
     int ordinal;
 } NameOrdinalPair;
 
+/** The devices OPTION SIMULATE and -s know, NULL-terminated. */
+extern const NameOrdinalPair options_simulate_map[];
+
 typedef struct {
     const char *name;
     OptionsId id;

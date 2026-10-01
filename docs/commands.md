@@ -1,8 +1,8 @@
-[← MMB4M](../README.md)
+[← Documentation](README.md)
 
-# What exists here and not on a Colour Maximite 2 or a PicoMite
+# What MMB4M adds
 
-What a Mac adds: the terminal, the operating system, USB controllers, and the things MMBasic reports about itself. Where a device is named below, the claim was checked against that device's own manual. The [MMBasic for Linux README](https://github.com/thwill1000/mmb4l#readme) carries the full syntax for most of it, though it is behind the interpreter in places.
+A Mac has a terminal, an operating system and USB controllers, and MMBasic for Linux brought commands for all three. This page lists what works here and not on a Colour Maximite 2 or a PicoMite. The [MMBasic for Linux README](https://github.com/thwill1000/mmb4l#readme) has the full syntax for most of it.
 
 ## The console
 
@@ -77,7 +77,7 @@ Untested on a Mac.
 
 `MM.INFO(CALLDEPTH)` counts how deep the call nesting is, 0 outside any `SUB` or `FUNCTION`.
 
-`MM.INFO(PID)` is the process id the shell sees. `MM.INFO(CPUTIME)` is the CPU time this process has used, in nanoseconds.
+`MM.INFO(PID)` is the process id the shell sees. `MM.INFO(CPUTIME)` is the CPU time this process has used, in nanoseconds. `MM.INFO(FAST TIME)` also counts in nanoseconds here, where MMBasic for Windows counts ticks of its own clock.
 
 ### Errors
 

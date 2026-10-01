@@ -1,4 +1,4 @@
-[← MMB4M](../README.md)
+[← Documentation](README.md)
 
 # Running MMB4M
 
@@ -11,6 +11,8 @@ mmbasic -l Debug          # log level: None, Debug, Info, Warning, Error
 mmbasic -v                # version and copyright
 mmbasic -h                # all options
 ```
+
+`-s` takes one of these devices: `MMB4L`, the default, `MMB4W` for MMBasic for Windows, `CMM2` for the Colour Maximite 2, `PicoCalc`, `PicoMiteVGA`, `PicoMiteHDMI`, `PicoMiteVGAUSB` and `GameMite`. `mmbasic -h` lists them too. What simulating a device brings back is on [Colour Maximite 2 programs](cmm2.md) and [PicoMite programs](picomite.md).
 
 Nothing is logged unless you ask. `-l Info` or `-l Debug` writes `mmb4l.log` into the working directory. `MMDIR` in your environment does the same as `-d`.
 

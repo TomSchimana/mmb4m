@@ -34,6 +34,7 @@ MMB4M 0.2 adds many commands from the PicoMite V6.04 and raises most of its limi
 - `MEMORY PACK` and `MEMORY UNPACK` pack integers into values of 1, 4, 8, 16 or 32 bits and back. From PicoMite V6.04.00RC2, commit c655589
 - `ARRAY SET`, `ARRAY ADD`, `ARRAY SLICE` and `ARRAY INSERT` work on number and string arrays; `SLICE` and `INSERT` convert between integer and float. From PicoMite V6.04.00RC2, commit c655589
 - `b%() = a%()` copies a whole array into another of the same type and number of elements. From PicoMite V6.04.00RC2, commit c655589
+- `mmbasic -h` names every device `-s` can simulate, each by its short form
 
 ## 0.1.4, 2026-09-30
 
