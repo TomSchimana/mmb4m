@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "graphics.h"
 #include "mmresult.h"
 #include "../core/commandtbl.h"
+#include "../core/vartbl.h"
 
 #include <stdbool.h>
 
@@ -71,6 +72,28 @@ typedef struct {
 } FunctionSignature;
 
 bool parse_is_end(const char *p);
+
+/**
+ * @brief  Gives a keyword argument back its text form when a function of the
+ *         same name took it: "PEEK(BYTE (a%))" is tokenised with the function
+ *         BYTE( since that exists, and checkstring() no longer sees "BYTE".
+ *
+ * @param  p    Argument, as tokenised.
+ * @param  buf  At least STRINGSIZE bytes, used when \p p starts with a
+ *              function token whose name ends in '('.
+ * @return      \p buf holding "NAME (" and the rest of \p p, or \p p itself.
+ */
+const char *parse_keyword_from_function(const char *p, char *buf);
+
+/**
+ * @brief  Copies the text of a string constant, \p p up to \p end, into
+ *         \p out; under OPTION ESCAPE the PicoMite's escape sequences are
+ *         replaced: \\ \a \b \e \f \n \q (a quote) \r \t \v, \ddd in
+ *         decimal and \&hh in hex.
+ *
+ * @return  The number of characters written; never more than end - p.
+ */
+int parse_string_constant(const char *p, const char *end, char *out);
 
 /**
  * @brief Does the next text in an element (a basic statement) correspond to an alpha string.
@@ -241,6 +264,6 @@ MmResult parse_filename(const char *p, char *out, size_t out_sz);
  * @throws kSyntax if array data pointer validation fails
  */
 int parse_number_array(char *tp, MMFLOAT **a1float, MMINTEGER **a1int, int argno, int dimensions,
-                       short *dims, bool disallowConstant);
+                       DIMTYPE *dims, bool disallowConstant);
 
 #endif

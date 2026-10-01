@@ -20,7 +20,7 @@ Most of `OPTION` behaves as the PicoMite manual says. These are the ones that ma
 
 ## Keeping them
 
-Two kinds. `OPTION EDITOR`, `OPTION AUDIO`, `OPTION AUTOSCALE`, `OPTION TAB`, the function keys and a few more are kept: setting one writes `~/.mmbasic/mmbasic.options` at once, and it holds for every later start. `OPTION CODEPAGE` and `OPTION SIMULATE` are not kept and last for the session.
+Two kinds. `OPTION EDITOR`, `OPTION AUDIO`, `OPTION AUTOSCALE`, `OPTION TAB`, `OPTION CONTINUATION LINES`, the function keys and a few more are kept: setting one writes `~/.mmbasic/mmbasic.options` at once, and it holds for every later start. `OPTION CODEPAGE` and `OPTION SIMULATE` are not kept and last for the session.
 
 ```basic
 OPTION LIST

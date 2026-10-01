@@ -13,17 +13,17 @@ It is preliminary and can change as the work goes on.
 - [x] Opening a tenth file at the same time hangs. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
 - [x] A program close to the memory limit can crash instead of reporting that it is too long. ([0.1.4](https://github.com/TomSchimana/mmb4m/releases/tag/v0.1.4))
 
-## 0.2: the language catches up
+## 0.2: more PicoMite commands, higher limits
 
 Programs written for a current PicoMite use language features MMB4M does not have yet. This release adds them.
 
-- [ ] `BIT()` and `BYTE()`, to read and set single bits of a number and single bytes of a string.
-- [ ] Arrays with more than 32767 elements per dimension, and more memory for them.
-- [ ] More variables, deeper nesting of loops, more open files at once.
-- [ ] Loops that test their condition at the start, trimming strings, the line number of the last error.
-- [ ] Working on whole arrays in one statement.
-- [ ] Encryption and base64.
-- [ ] Saving and loading data, and more information about the running program.
+- [x] `BIT()` and `BYTE()`, to read and set single bits of a number and single bytes of a string. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] Arrays with more than 32767 elements per dimension, and more memory for them. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] More variables, deeper nesting of loops, more open files at once. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] Loops that test their condition at the start, trimming strings, the line number of the last error. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] Working on whole arrays in one statement. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] Encryption and base64. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+- [x] Saving and loading data, and more information about the running program. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
 
 ## 0.3: mouse, images and controls
 

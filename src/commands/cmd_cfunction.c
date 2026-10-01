@@ -51,7 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void cmd_cfunction(void) {
     CommandToken end_token = (cmdtoken == cmdCSUB)
             ? cmdEND_CSUB
-            : cmdEND_DEFINEFONT;
+            : (cmdtoken == cmdCFUN) ? cmdEND_CFUNCTION : cmdEND_DEFINEFONT;
     const char *p = cmdline;
     while (*p != 0xff) {
         if (*p == 0) p++;  // if it is at the end of an element skip the zero marker

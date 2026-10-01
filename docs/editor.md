@@ -33,7 +33,7 @@ F4         start marking; then DEL deletes, F4 cuts, F5 copies
 F5         paste
 ```
 
-There is no `SAVE` command for programs: you edit the real file, and F1 writes it.
+You edit the real file, and F1 writes it. `SAVE "other.bas"` writes a copy of the program under another name.
 
 ## Using your own editor instead
 

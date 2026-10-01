@@ -48,10 +48,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/complex_compat.h"
 #include "../common/display.h"
 #include "../common/mmb4l.h"
+#include "../common/interrupt.h"
 #include "../common/mmtime.h"
 #include "../core/MMBasic.h"
 #include "../core/maths.h"
 #include "../core/Functions.h"
+#include "../third_party/aes.h"
 
 #define CRC4_DEFAULT_POLYNOME       0x03
 #define CRC4_ITU                    0x03
@@ -208,6 +210,18 @@ void PInt(int64_t n) {
 void PIntComma(int64_t n) {
     display_puts(", "); PInt(n);
 }
+
+void PIntH(int64_t n) {
+    char s[20];
+    IntToStr(s, n, 16);
+    display_puts(s);
+}
+
+void PIntHComma(int64_t n) {
+    display_puts(", "); PIntH(n);
+}
+
+void cmd_SensorFusion(char *passcmdline);
 
 void MadgwickQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MMFLOAT gy, MMFLOAT gz, MMFLOAT mx, MMFLOAT my, MMFLOAT mz, MMFLOAT beta, MMFLOAT deltat, MMFLOAT *pitch, MMFLOAT *yaw, MMFLOAT *roll)
         {
@@ -780,13 +794,13 @@ uint64_t crc64(const uint8_t *array, uint16_t length, const uint64_t polynome,
   if (reverseOut) crc = reverse64(crc);
   return crc;
 }
-int parseintegerarray(const char *tp, int64_t **a1int, int argno, int dimensions, short *dims, bool ConstantNotAllowed){
+int parseintegerarray(const char *tp, int64_t **a1int, int argno, int dimensions, DIMTYPE *dims, bool ConstantNotAllowed){
 	int i,j;
 	void *ptr1 = findvar(tp, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
 	if((vartbl[VarIndex].type & T_CONST) && ConstantNotAllowed) error_throw_legacy("Cannot change a constant");
 	if(dims==NULL)dims=vartbl[VarIndex].dims;
 	if(vartbl[VarIndex].type & T_INT) {
-		memcpy(dims,vartbl[VarIndex].dims, MAXDIM * sizeof(short));
+		memcpy(dims,vartbl[VarIndex].dims, MAXDIM * sizeof(DIMTYPE));
 		*a1int = (int64_t *)ptr1;
 		if ((char *)ptr1 != vartbl[VarIndex].val.s) ERROR_SYNTAX;
 	} else error_throw_legacy("Argument % must be an integer array",argno);
@@ -799,13 +813,13 @@ int parseintegerarray(const char *tp, int64_t **a1int, int argno, int dimensions
 	}
 	return card;
 }
-int parsenumberarray(const char *tp, MMFLOAT **a1float, int64_t **a1int, int argno, short dimensions, short *dims, bool ConstantNotAllowed){
+int parsenumberarray(const char *tp, MMFLOAT **a1float, int64_t **a1int, int argno, short dimensions, DIMTYPE *dims, bool ConstantNotAllowed){
 	int i,j;
 	void *ptr1 = findvar(tp, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
 	if((vartbl[VarIndex].type & T_CONST) && ConstantNotAllowed) error_throw_legacy("Cannot change a constant");
 	if(dims==NULL)dims=vartbl[VarIndex].dims;
 	if(vartbl[VarIndex].type & (T_INT | T_NBR)) {
-		memcpy(dims,vartbl[VarIndex].dims,  MAXDIM * sizeof(short));
+		memcpy(dims,vartbl[VarIndex].dims,  MAXDIM * sizeof(DIMTYPE));
 		if(vartbl[VarIndex].type & T_NBR) *a1float = (MMFLOAT *)ptr1;
 		else *a1int=(int64_t *)ptr1;
 		if((char *)ptr1!=vartbl[VarIndex].val.s)ERROR_SYNTAX;
@@ -819,14 +833,14 @@ int parsenumberarray(const char *tp, MMFLOAT **a1float, int64_t **a1int, int arg
 	}
 	return card;
 }
-int parsefloatrarray(const char *tp, MMFLOAT **a1float, int argno, int dimensions, short *dims, bool ConstantNotAllowed){
+int parsefloatrarray(const char *tp, MMFLOAT **a1float, int argno, int dimensions, DIMTYPE *dims, bool ConstantNotAllowed){
 	void *ptr1 = NULL;
 	int i,j;
 	ptr1 = findvar(tp, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
 	if((vartbl[VarIndex].type & T_CONST) && ConstantNotAllowed) error_throw_legacy("Cannot change a constant");
 	if(dims==NULL)dims=vartbl[VarIndex].dims;
 	if(vartbl[VarIndex].type & T_NBR) {
-		memcpy(dims,vartbl[VarIndex].dims,  MAXDIM * sizeof(short));
+		memcpy(dims,vartbl[VarIndex].dims,  MAXDIM * sizeof(DIMTYPE));
 		*a1float = (MMFLOAT *)ptr1;
 		if((char *) ptr1!= vartbl[VarIndex].val.s)ERROR_SYNTAX;
 	} else error_throw_legacy("Argument % must be a floating point array",argno);
@@ -900,16 +914,297 @@ int64_t iarr2d(int64_t *arr,int d1, int a, int b){
 	arr+=d1*b+a;
 	return *arr;
 }
+
+// ---- MATH SINC, as on the PicoMite V6.04.00RC2, and MATH(UPSAMPLE), as in MMBasic for Windows ----
+
+/** Smooths (x_in, y_in) with a windowed sinc (Hamming) kernel into (x_out, y_out), n points each. */
+static void sinc_filter(const MMFLOAT *x_in, const MMFLOAT *y_in, int n, MMFLOAT *x_out, MMFLOAT *y_out,
+                        MMFLOAT cutoff_freq, int window_size) {
+    if (window_size % 2 == 0) window_size++;
+    const int center = window_size / 2, pad = window_size / 2, padded_len = n + 2 * pad;
+    MMFLOAT *kernel = GetTempMemory(window_size * sizeof(MMFLOAT));
+    MMFLOAT kernel_sum = 0.0;
+    for (int i = 0; i < window_size; i++) {
+        const int t = i - center;
+        const MMFLOAT hamming = 0.54 - 0.46 * cos(2.0 * M_PI * i / (window_size - 1));
+        kernel[i] = (t == 0) ? 2.0 * cutoff_freq * hamming
+                             : (sin(2.0 * M_PI * cutoff_freq * t) / (M_PI * t)) * hamming;
+        kernel_sum += kernel[i];
+    }
+    for (int i = 0; i < window_size; i++) kernel[i] /= kernel_sum;
+    MMFLOAT *xp = GetTempMemory(padded_len * sizeof(MMFLOAT));
+    MMFLOAT *yp = GetTempMemory(padded_len * sizeof(MMFLOAT));
+    for (int i = 0; i < pad; i++) {
+        xp[i] = x_in[0]; yp[i] = y_in[0];
+        xp[padded_len - 1 - i] = x_in[n - 1]; yp[padded_len - 1 - i] = y_in[n - 1];
+    }
+    for (int i = 0; i < n; i++) { xp[i + pad] = x_in[i]; yp[i + pad] = y_in[i]; }
+    for (int i = 0; i < n; i++) {
+        MMFLOAT sx = 0.0, sy = 0.0;
+        for (int j = 0; j < window_size; j++) { sx += xp[i + j] * kernel[j]; sy += yp[i + j] * kernel[j]; }
+        x_out[i] = sx;
+        y_out[i] = sy;
+    }
+}
+
+/** Resamples (x_in, y_in), n points, onto m evenly spaced points with a windowed sinc. */
+static void sinc_filter_interpolate(const MMFLOAT *x_in, const MMFLOAT *y_in, int n, int m,
+                                    MMFLOAT *x_out, MMFLOAT *y_out, MMFLOAT cutoff_freq, int window_size) {
+    if (n <= 1) return;
+    if ((window_size & 1) == 0) window_size++;
+    const int half = window_size / 2;
+    const MMFLOAT x_start = x_in[0], span = x_in[n - 1] - x_in[0];
+    const MMFLOAT step = (m > 1) ? span / (MMFLOAT) (m - 1) : 0.0;
+    MMFLOAT sample_step = (x_in[n - 1] - x_in[0]) / (MMFLOAT) (n - 1);
+    if (sample_step == 0.0) sample_step = 1.0;
+    for (int i = 0; i < m; i++) {
+        const MMFLOAT x_target = x_start + step * (MMFLOAT) i;
+        x_out[i] = x_target;
+        const double idx_f = (double) (x_target - x_start) / (double) sample_step;
+        const int idx0 = (int) floor(idx_f);
+        const double frac = idx_f - (double) idx0;
+        double acc = 0.0, norm = 0.0;
+        for (int j = -half; j <= half; j++) {
+            const int src = idx0 + j;
+            if (src < 0 || src >= n) continue;
+            const double t = (double) j - frac;
+            const double window = 0.54 - 0.46 * cos(2.0 * M_PI * (double) (j + half) / (double) (window_size - 1));
+            double w = (t == 0.0) ? (double) (2.0 * cutoff_freq) : sin(2.0 * M_PI * cutoff_freq * t) / (M_PI * t);
+            w *= window;
+            acc += (double) y_in[src] * w;
+            norm += w;
+        }
+        y_out[i] = (norm != 0.0) ? (MMFLOAT) (acc / norm) : 0.0;
+    }
+}
+
+static double sincpi(double x) {
+    return (x == 0.0) ? 1.0 : sin(M_PI * x) / (M_PI * x);
+}
+
+/** Converts xsamps samples at 'down' Hz into samples at 'up' Hz; returns how many. */
+static int upsample(const MMFLOAT *x, MMFLOAT *y, int xsamps, MMFLOAT up, MMFLOAT down) {
+    const double down_ratio = down / up;
+    const int ysamps = 1 + (int) ((xsamps - 6) / down_ratio);
+    for (int j = 0; j < ysamps; j++) {
+        const double b = j * down_ratio;
+        const int i = (int) b;
+        const double a = b - i;
+        y[j] = x[i] * sincpi(2 + a) + x[i + 1] * sincpi(1 + a) + x[i + 2] * sincpi(a)
+                + x[i + 3] * sincpi(1 - a) + x[i + 4] * sincpi(2 - a) + x[i + 5] * sincpi(3 - a);
+    }
+    return ysamps;
+}
+
+
+// ---- MATH PID, as on the PicoMite V6.04.00RC2 ----
+
+/** The 14 elements of the float array MATH PID INIT is given, in order. */
+typedef struct {
+    MMFLOAT Kp, Ki, Kd;              // gains
+    MMFLOAT tau;                     // derivative low-pass filter time constant
+    MMFLOAT limMin, limMax;          // output limits
+    MMFLOAT limMinInt, limMaxInt;    // integrator limits
+    MMFLOAT T;                       // sample time, seconds
+    MMFLOAT integrator, prevError, differentiator, prevMeasurement;  // controller memory
+    MMFLOAT out;
+} PidController;
+
+static PidController *pid_channels[MAX_PID_CHANNELS + 1];
+
+static MMFLOAT pid_update(PidController *pid, MMFLOAT setpoint, MMFLOAT measurement) {
+    const MMFLOAT error = setpoint - measurement;
+    const MMFLOAT proportional = pid->Kp * error;
+    pid->integrator = pid->integrator + 0.5 * pid->Ki * pid->T * (error + pid->prevError);
+    if (pid->integrator > pid->limMaxInt) pid->integrator = pid->limMaxInt;
+    else if (pid->integrator < pid->limMinInt) pid->integrator = pid->limMinInt;
+    // Derivative on the measurement, band-limited.
+    pid->differentiator = -(2.0 * pid->Kd * (measurement - pid->prevMeasurement)
+                            + (2.0 * pid->tau - pid->T) * pid->differentiator)
+                          / (2.0 * pid->tau + pid->T);
+    pid->out = proportional + pid->integrator + pid->differentiator;
+    if (pid->out > pid->limMax) pid->out = pid->limMax;
+    else if (pid->out < pid->limMin) pid->out = pid->limMin;
+    pid->prevError = error;
+    pid->prevMeasurement = measurement;
+    return pid->out;
+}
+
+/** MATH PID INIT channel, params!(), callback | START channel | STOP channel */
+static void cmd_math_pid(const char *tp) {
+    const char *pi;
+    if ((pi = checkstring(tp, "START"))) {
+        const int channel = getint(pi, 1, MAX_PID_CHANNELS);
+        if (!pid_channels[channel] || FAILED(interrupt_start_pid(channel))) {
+            error_throw_legacy("Channel not initialised");
+        }
+    } else if ((pi = checkstring(tp, "STOP"))) {
+        const int channel = getint(pi, 1, MAX_PID_CHANNELS);
+        if (!pid_channels[channel]) error_throw_legacy("Channel not initialised");
+        interrupt_set_pid(channel, NULL, 0);
+        pid_channels[channel] = NULL;
+    } else if ((pi = checkstring(tp, "INIT"))) {
+        getargs(&pi, 5, DELIM_COMMA);
+        if (argc != 5) ERROR_SYNTAX;
+        MMFLOAT *q1 = NULL;
+        const int channel = getint(argv[0], 1, MAX_PID_CHANNELS);
+        const int card = parsefloatrarray(argv[2], &q1, 2, 1, NULL, true);
+        if (card != 14) error_throw_legacy("Argument 2 must be a 14 element floating point array");
+        PidController *pid = (PidController *) q1;
+        if (pid->T < 0.001) error_throw_legacy("Invalid update rate");
+        pid_channels[channel] = pid;
+        interrupt_set_pid(channel, GetIntAddress(argv[4]), (int64_t) (pid->T * 1e9));
+    } else {
+        ERROR_SYNTAX;
+    }
+}
+
+// ---- MATH AES128 ENCRYPT|DECRYPT CBC|ECB|CTR, as on the PicoMite V6.04.00RC2 ----
+
+/** Sixteen random bytes for an initialisation vector, from the system's generator. */
+void aes_random_iv(uint8_t *iv) {
+	arc4random_buf(iv, 16);
+}
+
+/** A key or initialisation vector: a string, or an integer or float array of 16 bytes. */
+void aes_get16(const char *arg, uint8_t *out, const char *size_error) {
+	MMFLOAT *afloat=NULL;
+	int64_t *aint=NULL;
+	char *astr=NULL;
+	int length = 0;
+	if(parseany(arg, &afloat, &aint, &astr, &length, false) != 16) error_throw_legacy(size_error);
+	for(int i = 0; i < 16; i++) {
+		if(aint) {
+			if(aint[i] < 0 || aint[i] > 255) error_throw_legacy("Key number out of bounds 0-255");
+			out[i] = aint[i];
+		} else if(afloat) {
+			if(afloat[i] < 0 || afloat[i] > 255) error_throw_legacy("Key number out of bounds 0-255");
+			out[i] = afloat[i];
+		} else {
+			out[i] = astr[i + 1];
+		}
+	}
+}
+
+static void math_aes128(const char *tp) {
+	const char *q, *p;
+	const bool encrypt = (q = checkstring(tp, "ENCRYPT")) != NULL;
+	if(!encrypt && !(q = checkstring(tp, "DECRYPT"))) ERROR_SYNTAX;
+	const bool ecb = (p = checkstring(q, "ECB")) != NULL;
+	const bool cbc = !ecb && (p = checkstring(q, "CBC")) != NULL;
+	if(!ecb && !cbc && !(p = checkstring(q, "CTR"))) ERROR_SYNTAX;
+	// Encrypting in CBC or CTR puts the initialisation vector in front of the output,
+	// decrypting takes it from the front of the input.
+	const int ivadd = ecb ? 0 : encrypt ? 16 : -16;
+	uint8_t keyx[16], iv[16];
+	getargs(&p, 7, DELIM_COMMA);
+	if(ivadd == 16 ? argc < 5 : argc != 5) ERROR_SYNTAX;
+	aes_get16(argv[0], keyx, "Key must be 16 elements long");
+	MMFLOAT *a2float=NULL, *outflt=NULL;
+	int64_t *a2int=NULL, *outint=NULL;
+	char *a2str=NULL, *outstr=NULL;
+	int length = 0;
+	const int card = parseany(argv[2], &a2float, &a2int, &a2str, &length, false);
+	if(card % 16) error_throw_legacy("input must be multiple of 16 elements long");
+	if(card < -ivadd) error_throw_legacy("input must be at least 16 elements long");
+	uint8_t *inx = (uint8_t *)GetTempMemory(card + 16);
+	length = 0;
+	const int card3 = parseany(argv[4], &outflt, &outint, &outstr, &length, false);
+	if(card3 != card + ivadd && outstr == NULL) error_throw_legacy("Array size mismatch");
+	if(ivadd == 16) {
+		if(argc == 7) aes_get16(argv[6], iv, "Initialisation vector must be 16 elements long");
+		else aes_random_iv(iv);
+	}
+	for(int i = 0; i < card; i++) {
+		if(a2int) {
+			if(a2int[i] < 0 || a2int[i] > 255) error_throw_legacy("input number out of bounds 0-255");
+			inx[i] = a2int[i];
+		} else if(a2float) {
+			if(a2float[i] < 0 || a2float[i] > 255) error_throw_legacy("input number out of bounds 0-255");
+			inx[i] = a2float[i];
+		} else {
+			inx[i] = a2str[i + 1];
+		}
+	}
+
+	struct AES_ctx ctx;
+	uint8_t *result = inx;
+	int size = card;
+	if(ecb) {
+		struct AES_ctx ctxcopy;
+		AES_init_ctx(&ctxcopy, keyx);
+		for(int i = 0; i < card; i += 16) {
+			memcpy(&ctx, &ctxcopy, sizeof(ctx));
+			if(encrypt) AES_ECB_encrypt(&ctx, &inx[i]);
+			else AES_ECB_decrypt(&ctx, &inx[i]);
+		}
+	} else if(encrypt) {
+		AES_init_ctx_iv(&ctx, keyx, iv);
+		if(cbc) AES_CBC_encrypt_buffer(&ctx, inx, card);
+		else AES_CTR_xcrypt_buffer(&ctx, inx, card);
+	} else {
+		AES_init_ctx_iv(&ctx, keyx, inx);
+		result = &inx[16];
+		size = card - 16;
+		if(cbc) AES_CBC_decrypt_buffer(&ctx, result, size);
+		else AES_CTR_xcrypt_buffer(&ctx, result, size);
+	}
+
+	// The result, behind the initialisation vector when one was made here.
+	const int front = ivadd == 16 ? 16 : 0;
+	if(outint || outflt) {
+		for(int i = 0; i < front; i++) {
+			if(outint) outint[i] = iv[i]; else outflt[i] = iv[i];
+		}
+		for(int i = 0; i < size; i++) {
+			if(outint) outint[front + i] = result[i]; else outflt[front + i] = result[i];
+		}
+	} else if(outstr) {
+		if(size + front >= 256) error_throw_legacy("Too many elements for string output");
+		memcpy(&outstr[1], iv, front);
+		memcpy(&outstr[1 + front], result, size);
+		outstr[0] = size + front;
+	}
+}
+
 void cmd_math(void){
 	const char *tp;
     int t = T_NBR;
     MMFLOAT f;
     MMINTEGER i64;
     char *s;
-	short dims[MAXDIM]={0};
+	DIMTYPE dims[MAXDIM]={0};
 
 	skipspace(cmdline);
 	if(toupper(*cmdline)=='S'){
+		tp = checkstring(cmdline,  "SINC");
+		if(tp) {
+			// MATH SINC x(), y(), n, [m,] window, frequency, xout(), yout(), as on the PicoMite.
+			MMFLOAT *a1float=NULL, *a2float=NULL, *a3float=NULL, *a4float=NULL;
+			getargs(&tp, 15, DELIM_COMMA);
+			if(argc != 13 && argc != 15) error_throw_legacy("Argument count");
+			const int n = getint(argv[4], 1, 10000);
+			int m, window;
+			MMFLOAT frequency;
+			if(argc == 13) {
+				m = n;
+				window = getint(argv[6], 3, 101);
+				frequency = getnumber(argv[8]);
+			} else {
+				m = getint(argv[6], 1, 20000);
+				window = getint(argv[8], 3, 101);
+				frequency = getnumber(argv[10]);
+			}
+			if(frequency <= 0.0 || frequency > 0.5) error_throw_legacy("Frequency must be >0 and <=0.5");
+			if(parsefloatrarray(argv[0], &a1float, 1, 1, NULL, false) < n) error_throw_legacy("Array size");
+			if(parsefloatrarray(argv[2], &a2float, 2, 1, NULL, false) < n) error_throw_legacy("Array size");
+			const int o = (argc == 13) ? 10 : 12;
+			if(parsefloatrarray(argv[o], &a3float, 3, 1, NULL, true) < m) error_throw_legacy("Array size");
+			if(parsefloatrarray(argv[o + 2], &a4float, 4, 1, NULL, true) < m) error_throw_legacy("Array size");
+			if(m == n) sinc_filter(a1float, a2float, n, a3float, a4float, frequency, window);
+			else sinc_filter_interpolate(a1float, a2float, n, m, a3float, a4float, frequency, window);
+			return;
+		}
 
 		tp = checkstring(cmdline,  "SET");
 		if(tp) {
@@ -1040,12 +1335,43 @@ void cmd_math(void){
 			for(i=0;i<=dim[target];i++)*a2int++ = a1int[start+i*increment];
 			return;
 		}
-		// tp = checkstring(cmdline,  "SENSORFUSION");
-		// if(tp) {
-		// 	cmd_SensorFusion((char *)tp);
-		// 	return;
-		// }
+		tp = checkstring(cmdline,  "SENSORFUSION");
+		if(tp) {
+			cmd_SensorFusion((char *)tp);
+			return;
+		}
 	} else if(toupper(*cmdline)=='C') {
+		tp = checkstring(cmdline,  "CLAMP");
+		if(tp) {
+			// MATH CLAMP in(), lo, hi, out(): every element limited to lo..hi, as on the PicoMite.
+			MMFLOAT *a1float=NULL, *a2float=NULL;
+			int64_t *a1int=NULL, *a2int=NULL;
+			getargs(&tp, 7, DELIM_COMMA);
+			if(argc != 7) error_throw_legacy("Argument count");
+			const int card1 = parsenumberarray(argv[0], &a1float, &a1int, 1, 0, dims, false);
+			const MMFLOAT lo = getnumber(argv[2]);
+			const MMFLOAT hi = getnumber(argv[4]);
+			if(lo > hi) error_throw_legacy("Low limit above high limit");
+			const int card2 = parsenumberarray(argv[6], &a2float, &a2int, 4, 0, dims, true);
+			if(card1 != card2) error_throw_legacy("Size mismatch");
+			const int64_t ilo = FloatToInt64(lo), ihi = FloatToInt64(hi);
+			for(int i = 0; i < card1; i++) {
+				if(a1float && a2float) {
+					const MMFLOAT v = a1float[i];
+					a2float[i] = v < lo ? lo : (v > hi ? hi : v);
+				} else if(a2float) {
+					const MMFLOAT v = (MMFLOAT) a1int[i];
+					a2float[i] = v < lo ? lo : (v > hi ? hi : v);
+				} else if(a1float) {
+					const MMFLOAT v = a1float[i];
+					a2int[i] = FloatToInt64(v < lo ? lo : (v > hi ? hi : v));
+				} else {
+					const int64_t v = a1int[i];
+					a2int[i] = v < ilo ? ilo : (v > ihi ? ihi : v);
+				}
+			}
+			return;
+		}
 		const char *tp1=NULL;
 		tp = checkstring(cmdline,  "C_ADD");
 		if(tp) {
@@ -1270,12 +1596,19 @@ void cmd_math(void){
 			int j, numcols=0;
 			MMFLOAT *a1float=NULL;
 			int64_t *a1int=NULL;
-			getargs(&tp, 1, DELIM_COMMA);
-			if(!(argc == 1)) error_throw_legacy("Argument count");
+			getargs(&tp, 3, DELIM_COMMA);
+			if(!(argc == 1 || argc == 3)) error_throw_legacy("Argument count");
 			numcols=parsenumberarray(argv[0],&a1float,&a1int,1,1, dims, false);
+			// MATH V_PRINT a%(), HEX, as on the PicoMite and CMM2 V6.
+			if(argc == 3 && !checkstring(argv[2], "HEX")) ERROR_SYNTAX;
 			if(a1float!=NULL){
+				if(argc == 3) error_throw_legacy("Trying to print a float in HEX");
 				PFlt(*a1float++);
 				for(j=1;j<numcols;j++)PFltComma(*a1float++);
+				PRet();
+			} else if(argc == 3) {
+				PIntH(*a1int++);
+				for(j=1;j<numcols;j++)PIntHComma(*a1int++);
 				PRet();
 			} else {
 				PInt(*a1int++);
@@ -1582,6 +1915,16 @@ void cmd_math(void){
 			return;
 		}
 	} else {
+		tp = checkstring(cmdline,  "AES128");
+		if(tp) {
+			math_aes128(tp);
+			return;
+		}
+		tp = checkstring(cmdline,  "PID");
+		if(tp) {
+			cmd_math_pid(tp);
+			return;
+		}
 		tp = checkstring(cmdline,  "ADD");
 		if(tp) {
 			int i,card1=1, card2=1;
@@ -1820,9 +2163,74 @@ void retComplex(fcplx in){
 	memcpy(&iret, &in, 8);
 	targ=T_INT;
 }
+
+// ---- MATH(BASE64 ENCODE|DECODE in, out), as on the PicoMite V6.04.00RC2 ----
+
+static const char b64_chr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static unsigned b64_int(unsigned ch) {
+    if (ch == '+') return 62;
+    if (ch == '/') return 63;
+    if (ch == '=') return 64;
+    if (ch >= '0' && ch <= '9') return ch + 4;
+    if (ch >= 'A' && ch <= 'Z') return ch - 'A';
+    if (ch >= 'a' && ch <= 'z') return ch - 'a' + 26;
+    return 0;
+}
+
+unsigned b64e_size(unsigned in_size) { return 4 * ((in_size + 2) / 3); }
+unsigned b64d_size(unsigned in_size) { return (3 * in_size) / 4; }
+
+unsigned b64_encode(const unsigned char *in, unsigned in_len, unsigned char *out) {
+    unsigned j = 0, k = 0, s[3] = { 0 };
+    for (unsigned i = 0; i < in_len; i++) {
+        s[j++] = in[i];
+        if (j == 3) {
+            out[k + 0] = b64_chr[(s[0] & 255) >> 2];
+            out[k + 1] = b64_chr[((s[0] & 0x03) << 4) + ((s[1] & 0xF0) >> 4)];
+            out[k + 2] = b64_chr[((s[1] & 0x0F) << 2) + ((s[2] & 0xC0) >> 6)];
+            out[k + 3] = b64_chr[s[2] & 0x3F];
+            j = 0;
+            k += 4;
+        }
+    }
+    if (j) {
+        if (j == 1) s[1] = 0;
+        out[k + 0] = b64_chr[(s[0] & 255) >> 2];
+        out[k + 1] = b64_chr[((s[0] & 0x03) << 4) + ((s[1] & 0xF0) >> 4)];
+        out[k + 2] = (j == 2) ? b64_chr[((s[1] & 0x0F) << 2)] : '=';
+        out[k + 3] = '=';
+        k += 4;
+    }
+    return k;
+}
+
+unsigned b64_decode(const unsigned char *in, unsigned in_len, unsigned char *out) {
+    unsigned j = 0, k = 0, s[4];
+    for (unsigned i = 0; i < in_len; i++) {
+        s[j++] = b64_int(in[i]);
+        if (j == 4) {
+            out[k + 0] = ((s[0] & 255) << 2) + ((s[1] & 0x30) >> 4);
+            if (s[2] != 64) {
+                out[k + 1] = ((s[1] & 0x0F) << 4) + ((s[2] & 0x3C) >> 2);
+                if (s[3] != 64) {
+                    out[k + 2] = ((s[2] & 0x03) << 6) + s[3];
+                    k += 3;
+                } else {
+                    k += 2;
+                }
+            } else {
+                k += 1;
+            }
+            j = 0;
+        }
+    }
+    return k;
+}
+
 void fun_math(void){
 	const char *tp, *tp1;
-	short dims[MAXDIM]={0};
+	DIMTYPE dims[MAXDIM]={0};
 	skipspace(ep);
 	if(toupper(*ep)=='A'){
 		tp = checkstring(ep,  "ATAN3");
@@ -1836,6 +2244,66 @@ void fun_math(void){
 			if (z < 0.0) z = z + 2 * M_PI;
 			fret=z;
 	 		fret *=ANGLE_CONVERSION;
+			targ = T_NBR;
+			return;
+		}
+	} else if(toupper(*ep)=='B') {
+		tp = checkstring(ep,  "BASE64");
+		if(tp) {
+			// Input and output are each a string variable, or an integer or float array of bytes.
+			const char *q;
+			const bool encode = (q = checkstring(tp, "ENCODE")) != NULL;
+			if(!encode && !(q = checkstring(tp, "DECODE"))) ERROR_SYNTAX;
+			MMFLOAT *infloat=NULL, *outfloat=NULL;
+			int64_t *inint=NULL, *outint=NULL;
+			char *instr=NULL, *outstr=NULL;
+			getargs(&q, 3, DELIM_COMMA);
+			if(argc != 3) ERROR_SYNTAX;
+			int length = 0;
+			const int card = parseany(argv[0], &infloat, &inint, &instr, &length, false);
+			length = 0;
+			const int card2 = parseany(argv[2], &outfloat, &outint, &outstr, &length, false);
+			unsigned char *in = GetTempMemory(card + 1);
+			for(int i = 0; i < card; i++) {
+				if(inint) {
+					if(inint[i] < 0 || inint[i] > 255) error_throw_legacy("Key number out of bounds 0-255");
+					in[i] = inint[i];
+				} else if(infloat) {
+					if(infloat[i] < 0 || infloat[i] > 255) error_throw_legacy("Key number out of bounds 0-255");
+					in[i] = infloat[i];
+				} else {
+					in[i] = instr[i + 1];
+				}
+			}
+			const unsigned need = encode ? b64e_size(card) : b64d_size(card);
+			if(!outstr && card2 < (int) need) error_throw_legacy("Output array too small");
+			if(outstr && need > 255) error_throw_legacy("Output exceeds string size");
+			unsigned char *out = GetTempMemory(b64e_size(card + 1) + 4);
+			const int size = encode ? b64_encode(in, card, out) : b64_decode(in, card, out);
+			for(int i = 0; i < size; i++) {
+				if(outint) outint[i] = out[i];
+				else if(outfloat) outfloat[i] = out[i];
+			}
+			if(outstr) {
+				memcpy(&outstr[1], out, size);
+				outstr[0] = size;
+			}
+			iret = size;
+			targ = T_INT;
+			return;
+		}
+	} else if(toupper(*ep)=='P') {
+		tp = checkstring(ep,  "PID");
+		if(tp) {
+			// MATH(PID channel, setpoint, measurement): the controller's output.
+			getargs(&tp, 5, DELIM_COMMA);
+			if(argc != 5) ERROR_SYNTAX;
+			const int channel = getint(argv[0], 1, MAX_PID_CHANNELS);
+			const MMFLOAT setpoint = getnumber(argv[2]);
+			const MMFLOAT measurement = getnumber(argv[4]);
+			if(!pid_channels[channel]) error_throw_legacy("Channel not configured");
+			if(!interrupt_pid_active(channel)) error_throw_legacy("Channel not active");
+			fret = pid_update(pid_channels[channel], setpoint, measurement);
 			targ = T_NBR;
 			return;
 		}
@@ -2577,6 +3045,28 @@ void fun_math(void){
 			fret=sum;
 			return;
 		}
+	} else if(toupper(*ep)=='U') {
+		tp = checkstring(ep,  "UPSAMPLE");
+		if(tp) {
+			// MATH(UPSAMPLE in(), out(), infreq, outfreq): the number of samples written, as in MMBasic for Windows.
+			MMFLOAT *q1=NULL, *v1=NULL;
+			getargs(&tp, 7, DELIM_COMMA);
+			if(argc != 7) error_throw_legacy("Argument count");
+			const int insize = parsefloatrarray(argv[0], &q1, 1, 1, NULL, false);
+			const int outsize = parsefloatrarray(argv[2], &v1, 2, 1, NULL, true);
+			if(insize < 7) error_throw_legacy("Input array too small");
+			const MMFLOAT infreq = getnumber(argv[4]);
+			if(infreq <= 0) error_throw_legacy("Invalid input frequency");
+			const MMFLOAT outfreq = getnumber(argv[6]);
+			if(outfreq < infreq) error_throw_legacy("Invalid output frequency");
+			MMFLOAT *buf = GetTempMemory((int) (outfreq / infreq * (MMFLOAT) insize + 10) * sizeof(MMFLOAT));
+			const int got = upsample(q1, buf, insize - 1, outfreq, infreq);
+			if(got > outsize) error_throw_legacy("Output array size");
+			memcpy(v1, buf, got * sizeof(MMFLOAT));
+			fret = got;
+			targ = T_NBR;
+			return;
+		}
 	} else if(toupper(*ep)=='T') {
 
 		tp = checkstring(ep,  "TANH");
@@ -2662,7 +3152,7 @@ bool Fft_transformRadix2(cplx vec[], size_t n, bool inverse) {
 void cmd_FFT(const char *pp){
     const char *tp;
 	PI = atan2(1, 1) * 4;
-	short dims[MAXDIM]={0};
+	DIMTYPE dims[MAXDIM]={0};
     cplx *a1cplx=NULL, *a2cplx=NULL;
     MMFLOAT *a3float=NULL, *a4float=NULL, *a5float;
     int i, card1,card2, powerof2=0;
@@ -2735,70 +3225,76 @@ void cmd_FFT(const char *pp){
 //    fft((MMFLOAT *)a2cplx,size+1);
     Fft_transformRadix2(a2cplx, card1, 0);
 }
-// void cmd_SensorFusion(char *passcmdline){
-//     char *p;
-//     if((p = checkstring( passcmdline,  "MADGWICK")) != NULL) {
-//     getargs(&p, 25, DELIM_COMMA);
-//     if(argc < 23) error_throw_legacy("Incorrect number of parameters");
-//         MMFLOAT t;
-//         MMFLOAT *pitch, *yaw, *roll;
-//         MMFLOAT ax; MMFLOAT ay; MMFLOAT az; MMFLOAT gx; MMFLOAT gy; MMFLOAT gz; MMFLOAT mx; MMFLOAT my; MMFLOAT mz; MMFLOAT beta;
-//         ax=getnumber(argv[0]);
-//         ay=getnumber(argv[2]);
-//         az=getnumber(argv[4]);
-//         gx=getnumber(argv[6]);
-//         gy=getnumber(argv[8]);
-//         gz=getnumber(argv[10]);
-//         mx=getnumber(argv[12]);
-//         my=getnumber(argv[14]);
-//         mz=getnumber(argv[16]);
-//         pitch = findvar(argv[18], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         roll = findvar(argv[20], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         yaw = findvar(argv[22], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         beta = 0.5;
-//         if(argc == 25) beta=getnumber(argv[24]);
-//         t=(MMFLOAT)AHRSTimer/1000.0;
-//         if(t>1.0)t=1.0;
-//         AHRSTimer=0;
-//         MadgwickQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, beta, t, pitch, yaw, roll);
-//         return;
-//     }
-//     if((p = checkstring( passcmdline,  "MAHONY")) != NULL) {
-//     getargs(&p, 27, DELIM_COMMA);
-//     if(argc < 23) error_throw_legacy("Incorrect number of parameters");
-//         MMFLOAT t;
-//         MMFLOAT *pitch, *yaw, *roll;
-//         MMFLOAT Kp, Ki;
-//         MMFLOAT ax; MMFLOAT ay; MMFLOAT az; MMFLOAT gx; MMFLOAT gy; MMFLOAT gz; MMFLOAT mx; MMFLOAT my; MMFLOAT mz;
-//         ax=getnumber(argv[0]);
-//         ay=getnumber(argv[2]);
-//         az=getnumber(argv[4]);
-//         gx=getnumber(argv[6]);
-//         gy=getnumber(argv[8]);
-//         gz=getnumber(argv[10]);
-//         mx=getnumber(argv[12]);
-//         my=getnumber(argv[14]);
-//         mz=getnumber(argv[16]);
-//         pitch = findvar(argv[18], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         roll = findvar(argv[20], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         yaw = findvar(argv[22], V_FIND);
-//         if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
-//         Kp=10.0 ; Ki=0.0;
-//         if(argc >= 25)Kp=getnumber(argv[24]);
-//         if(argc == 27)Ki=getnumber(argv[26]);
-//         t=(MMFLOAT)AHRSTimer/1000.0;
-//         if(t>1.0)t=1.0;
-//         AHRSTimer=0;
-//         MahonyQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, Ki, Kp, t, yaw, pitch, roll) ;
-//         return;
-//     }
-//     error_throw_legacy("Invalid command");
-// }
+// The time since the last MATH SENSORFUSION, at most one second; on the
+// Colour Maximite 2 this was its AHRSTimer.
+static MMFLOAT sensorfusion_seconds(void) {
+    static int64_t last_ns = 0;
+    const int64_t now = mmtime_now_ns();
+    MMFLOAT t = (MMFLOAT) (now - last_ns) / 1e9;
+    last_ns = now;
+    return t > 1.0 ? 1.0 : t;
+}
+
+void cmd_SensorFusion(char *passcmdline){
+    char *p;
+    if((p = checkstring( passcmdline,  "MADGWICK")) != NULL) {
+    getargs(&p, 25, DELIM_COMMA);
+    if(argc < 23) error_throw_legacy("Incorrect number of parameters");
+        MMFLOAT t;
+        MMFLOAT *pitch, *yaw, *roll;
+        MMFLOAT ax; MMFLOAT ay; MMFLOAT az; MMFLOAT gx; MMFLOAT gy; MMFLOAT gz; MMFLOAT mx; MMFLOAT my; MMFLOAT mz; MMFLOAT beta;
+        ax=getnumber(argv[0]);
+        ay=getnumber(argv[2]);
+        az=getnumber(argv[4]);
+        gx=getnumber(argv[6]);
+        gy=getnumber(argv[8]);
+        gz=getnumber(argv[10]);
+        mx=getnumber(argv[12]);
+        my=getnumber(argv[14]);
+        mz=getnumber(argv[16]);
+        pitch = findvar(argv[18], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        roll = findvar(argv[20], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        yaw = findvar(argv[22], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        beta = 0.5;
+        if(argc == 25) beta=getnumber(argv[24]);
+        t=sensorfusion_seconds();
+        MadgwickQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, beta, t, pitch, yaw, roll);
+        return;
+    }
+    if((p = checkstring( passcmdline,  "MAHONY")) != NULL) {
+    getargs(&p, 27, DELIM_COMMA);
+    if(argc < 23) error_throw_legacy("Incorrect number of parameters");
+        MMFLOAT t;
+        MMFLOAT *pitch, *yaw, *roll;
+        MMFLOAT Kp, Ki;
+        MMFLOAT ax; MMFLOAT ay; MMFLOAT az; MMFLOAT gx; MMFLOAT gy; MMFLOAT gz; MMFLOAT mx; MMFLOAT my; MMFLOAT mz;
+        ax=getnumber(argv[0]);
+        ay=getnumber(argv[2]);
+        az=getnumber(argv[4]);
+        gx=getnumber(argv[6]);
+        gy=getnumber(argv[8]);
+        gz=getnumber(argv[10]);
+        mx=getnumber(argv[12]);
+        my=getnumber(argv[14]);
+        mz=getnumber(argv[16]);
+        pitch = findvar(argv[18], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        roll = findvar(argv[20], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        yaw = findvar(argv[22], V_FIND);
+        if(!(vartbl[VarIndex].type & T_NBR)) error_throw_legacy("Invalid variable");
+        Kp=10.0 ; Ki=0.0;
+        if(argc >= 25)Kp=getnumber(argv[24]);
+        if(argc == 27)Ki=getnumber(argv[26]);
+        t=sensorfusion_seconds();
+        MahonyQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, Ki, Kp, t, yaw, pitch, roll) ;
+        return;
+    }
+    error_throw_legacy("Invalid command");
+}
 
 /*Finding transpose of cofactor of matrix*/
 void transpose(MMFLOAT **matrix,MMFLOAT **matrix_cofactor,MMFLOAT **newmatrix, int size)
@@ -2914,3 +3410,158 @@ MMFLOAT determinant(MMFLOAT **matrix,int size)
    dealloc2df(m_minor,size,size);
    return (det);
 }
+
+// ---- ARRAY SET, ADD, SLICE and INSERT, as on the PicoMite V6.04.00RC2: MATH's own
+//      numeric forms, extended to string arrays ----
+
+typedef struct {
+    char *base;
+    int type;         // T_INT, T_NBR or T_STR
+    int elsize;       // bytes per element
+    int ndims;
+    int dim[MAXDIM];  // upper bound minus OPTION BASE, per dimension
+    int count;
+} ArrayRef;
+
+static ArrayRef array_ref(const char *arg, int argno, bool disallow_const) {
+    ArrayRef a = { 0 };
+    a.base = findvar(arg, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+    if (disallow_const && (vartbl[VarIndex].type & T_CONST)) ERROR_CANNOT_CHANGE_A_CONSTANT;
+    if (vartbl[VarIndex].dims[0] <= 0 || a.base != vartbl[VarIndex].val.s) {
+        error_throw_ex(kError, "Argument % must be an array", argno);
+    }
+    a.type = vartbl[VarIndex].type & (T_INT | T_NBR | T_STR);
+    a.elsize = (a.type & T_STR) ? vartbl[VarIndex].size + 1 : 8;
+    a.count = 1;
+    for (int i = 0; i < MAXDIM && vartbl[VarIndex].dims[i] != 0; i++) {
+        a.dim[i] = vartbl[VarIndex].dims[i] - mmb_options.base;
+        a.count *= a.dim[i] + 1;
+        a.ndims++;
+    }
+    return a;
+}
+
+/** Copies element si of src to element di of dst, converting between integer and float. */
+static void array_copy_element(const ArrayRef *src, int si, const ArrayRef *dst, int di) {
+    char *from = src->base + (size_t) si * src->elsize;
+    char *to = dst->base + (size_t) di * dst->elsize;
+    if ((src->type & T_STR) != (dst->type & T_STR)) error_throw_ex(kError, "Arrays must be the same type");
+    if (src->type & T_STR) {
+        if ((unsigned char) *from >= dst->elsize) ERROR_STRING_TOO_LONG;
+        memcpy(to, from, (unsigned char) *from + 1);
+    } else if (src->type == dst->type) {
+        memcpy(to, from, 8);
+    } else if (dst->type & T_NBR) {
+        *(MMFLOAT *) to = (MMFLOAT) *(int64_t *) from;
+    } else {
+        *(int64_t *) to = FloatToInt64(*(MMFLOAT *) from);
+    }
+}
+
+/** Numeric ARRAY forms are MATH's: run MATH with the same arguments. */
+static void array_as_math(const char *sub) {
+    static char buf[STRINGSIZE * 2];
+    snprintf(buf, sizeof(buf), "%s %s", sub, cmdline);
+    cmdline = buf;
+    cmd_math();
+}
+
+/** ARRAY SET value, array() */
+void cmd_array_set(void) {
+    const char *args = cmdline;
+    getargs(&cmdline, 3, DELIM_COMMA);
+    if (argc != 3) ERROR_ARGUMENT_COUNT;
+    findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+    if (!(vartbl[VarIndex].type & T_STR)) {
+        cmdline = args;
+        array_as_math("SET");
+        return;
+    }
+    ArrayRef a = array_ref(argv[2], 2, true);
+    const char *s = getstring(argv[0]);
+    if ((unsigned char) *s >= a.elsize) ERROR_STRING_TOO_LONG;
+    memset(a.base, 0, (size_t) a.count * a.elsize);
+    for (int i = 0; i < a.count; i++) memcpy(a.base + (size_t) i * a.elsize, s, (unsigned char) *s + 1);
+}
+
+/** ARRAY ADD in(), value, out(): adds value to each number, or appends it to each string. */
+void cmd_array_add(void) {
+    const char *args = cmdline;
+    getargs(&cmdline, 5, DELIM_COMMA);
+    if (argc != 5) ERROR_ARGUMENT_COUNT;
+    findvar(argv[0], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+    if (!(vartbl[VarIndex].type & T_STR)) {
+        cmdline = args;
+        array_as_math("ADD");
+        return;
+    }
+    ArrayRef in = array_ref(argv[0], 1, false);
+    ArrayRef out = array_ref(argv[4], 3, true);
+    if (!(out.type & T_STR)) error_throw_ex(kError, "Arrays must be the same type");
+    if (in.count != out.count) error_throw_ex(kError, "Array size mismatch");
+    const char *s = getstring(argv[2]);
+    char tmp[STRINGSIZE];
+    for (int i = 0; i < in.count; i++) {
+        const char *from = in.base + (size_t) i * in.elsize;
+        const int len = (unsigned char) *from + (unsigned char) *s;
+        if (len >= out.elsize) ERROR_STRING_TOO_LONG;
+        memcpy(tmp + 1, from + 1, (unsigned char) *from);
+        memcpy(tmp + 1 + (unsigned char) *from, s + 1, (unsigned char) *s);
+        tmp[0] = len;
+        memcpy(out.base + (size_t) i * out.elsize, tmp, len + 1);
+    }
+}
+
+/**
+ * The element offsets of the slice ARRAY SLICE and ARRAY INSERT work on: all
+ * indices given but one, in argv[2], argv[4] ... Returns the first element
+ * and puts the step in *increment; *length is how many elements.
+ */
+static int array_slice_start(const ArrayRef *a, int argc, char **argv, int *increment, int *length) {
+    if (a->ndims < 2) error_throw_ex(kError, "Argument 1 must be a 2D or more array");
+    if ((argc - 1) / 2 - 1 != a->ndims) ERROR_ARGUMENT_COUNT;
+    int target = -1, pos[MAXDIM] = { 0 }, off[MAXDIM];
+    for (int i = 0; i < a->ndims; i++) {
+        if (*argv[i * 2 + 2]) {
+            pos[i] = getint(argv[i * 2 + 2], mmb_options.base, a->dim[i] + mmb_options.base) - mmb_options.base;
+        } else {
+            if (target != -1) error_throw_ex(kError, "Only one index can be omitted");
+            target = i;
+        }
+    }
+    if (target == -1) error_throw_ex(kError, "One index must be omitted");
+    int start = 0;
+    for (int i = 0; i < a->ndims; i++) {
+        off[i] = 1;
+        for (int j = 0; j < i; j++) off[i] *= a->dim[j] + 1;
+        if (i != target) start += pos[i] * off[i];
+    }
+    *increment = off[target];
+    *length = a->dim[target] + 1;
+    return start;
+}
+
+/** ARRAY SLICE source(), [d1] [, d2] ..., dest(): one line of source() into the 1D dest(). */
+void cmd_array_slice(void) {
+    getargs(&cmdline, 2 * MAXDIM + 3, DELIM_COMMA);
+    if (argc < 7) ERROR_ARGUMENT_COUNT;
+    ArrayRef src = array_ref(argv[0], 1, false);
+    int increment, length;
+    const int start = array_slice_start(&src, argc, argv, &increment, &length);
+    ArrayRef dst = array_ref(argv[argc - 1], (argc + 1) / 2, true);
+    if (dst.ndims != 1 || dst.count != length) error_throw_ex(kError, "Size mismatch between slice and target array");
+    for (int k = 0; k < length; k++) array_copy_element(&src, start + k * increment, &dst, k);
+}
+
+/** ARRAY INSERT target(), [d1] [, d2] ..., source(): the 1D source() into one line of target(). */
+void cmd_array_insert(void) {
+    getargs(&cmdline, 2 * MAXDIM + 3, DELIM_COMMA);
+    if (argc < 7) ERROR_ARGUMENT_COUNT;
+    ArrayRef dst = array_ref(argv[0], 1, true);
+    int increment, length;
+    const int start = array_slice_start(&dst, argc, argv, &increment, &length);
+    ArrayRef src = array_ref(argv[argc - 1], (argc + 1) / 2, false);
+    if (src.ndims != 1 || src.count != length) error_throw_ex(kError, "Size mismatch between slice and source array");
+    for (int k = 0; k < length; k++) array_copy_element(&src, k, &dst, start + k * increment);
+}
+

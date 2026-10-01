@@ -215,11 +215,35 @@ static void peek_word(int argc, char **argv, const char *p) {
     g_rtn_type = T_INT;
 }
 
+/**
+ * PEEK(BP var%), PEEK(SP var%), PEEK(WP var%): the byte, short or word at the
+ * address held in var%, which then moves past it.
+ */
+static void peek_postinc(int argc, const char *p, int width) {
+    if (argc != 1) ERROR_SYNTAX;
+    findvar(p, V_FIND | V_NOFIND_ERR);
+    if (!(vartbl[VarIndex].type & T_INT)) error_throw_ex(kError, "Not integer variable");
+    uintptr_t addr = (uintptr_t) vartbl[VarIndex].val.i;
+    if (width == 2 && (addr & 1)) error_throw_ex(kError, "Not on short boundary");
+    if (width == 4 && (addr & 3)) error_throw_ex(kError, "Not on word boundary");
+    switch (width) {
+        case 1: g_integer_rtn = *(uint8_t *) addr; break;
+        case 2: g_integer_rtn = *(uint16_t *) addr; break;
+        default: g_integer_rtn = *(uint32_t *) addr; break;
+    }
+    vartbl[VarIndex].val.i += width;
+    g_rtn_type = T_INT;
+}
+
 void fun_peek(void) {
     getargs(&ep, 3, DELIM_COMMA);
 
+    char keyword[STRINGSIZE];
+    argv[0] = (char *) parse_keyword_from_function(argv[0], keyword);
     const char* p;
-    if ((p = checkstring(argv[0], "BYTE"))) {
+    if ((p = checkstring(argv[0], "BP"))) {
+        peek_postinc(argc, p, 1);
+    } else if ((p = checkstring(argv[0], "BYTE"))) {
         peek_byte(argc, argv, p);
     } else if ((p = checkstring(argv[0], "CFUNADDR"))) {
         peek_cfunaddr(argc, argv, p);
@@ -231,6 +255,8 @@ void fun_peek(void) {
         peek_float(argc, argv, p);
     } else if ((p = checkstring(argv[0], "PROGMEM"))) {
         peek_progmem(argc, argv, p);
+    } else if ((p = checkstring(argv[0], "SP"))) {
+        peek_postinc(argc, p, 2);
     } else if ((p = checkstring(argv[0], "SHORT"))) {
         peek_short(argc, argv, p);
     } else if ((p = checkstring(argv[0], "VAR"))) {
@@ -241,6 +267,8 @@ void fun_peek(void) {
         peek_varheader(argc, argv, p);
     } else if ((p = checkstring(argv[0], "VARTBL"))) {
         peek_vartbl(argc, argv, p);
+    } else if ((p = checkstring(argv[0], "WP"))) {
+        peek_postinc(argc, p, 4);
     } else if ((p = checkstring(argv[0], "WORD"))) {
         peek_word(argc, argv, p);
     } else {

@@ -189,11 +189,24 @@ const struct s_tokentbl commandtbl[] = {
     { "Wend",        T_CMD,              0, cmd_loop     },
     { "While",       T_CMD,              0, cmd_do       },
     { "XModem",      T_CMD,              0, cmd_xmodem   },
+    { "Bit(",        T_CMD | T_FUN,      0, cmd_bit      },
+    { "Byte(",       T_CMD | T_FUN,      0, cmd_byte     },
+    { "Flag(",       T_CMD | T_FUN,      0, cmd_flag     },
+    { "Flags",       T_CMD,              0, cmd_flags    },
+    { "LMid(",       T_CMD | T_FUN,      0, cmd_lmid     },
+    { "Flush",       T_CMD,              0, cmd_flush    },
+    { "CFunction",   T_CMD,              0, cmd_cfunction },
+    { "End CFunction", T_CMD,            0, cmd_null     },
+    { "Sync",        T_CMD,              0, cmd_sync     },
+    { "Array Set",   T_CMD,              0, cmd_array_set },
+    { "Array Add",   T_CMD,              0, cmd_array_add },
+    { "Array Slice", T_CMD,              0, cmd_array_slice },
+    { "Array Insert", T_CMD,             0, cmd_array_insert },
     { "",            0,                  0, cmd_null,    }  // This dummy entry is always at the end.
 };
 
 CommandToken cmdCASE, cmdCASE_ELSE, cmdCFUN, cmdCSUB, cmdDATA, cmdDEFINEFONT, cmdDIM, cmdDO;
-CommandToken cmdELSE, cmdELSEIF, cmdELSE_IF, cmdENDIF, cmdEND_CSUB, cmdEND_DEFINEFONT;
+CommandToken cmdELSE, cmdELSEIF, cmdELSE_IF, cmdENDIF, cmdEND_CSUB, cmdEND_CFUNCTION, cmdEND_DEFINEFONT;
 CommandToken cmdEND_FUNCTION;
 CommandToken cmdENDIF, cmdEND_IF, cmdEND_SELECT, cmdEND_SUB, cmdFOR, cmdFUN;
 CommandToken cmdIF, cmdIRET, cmdLET, cmdLOCAL, cmdLOOP, cmdNEXT, cmdPRINT;
@@ -210,7 +223,7 @@ void commandtbl_init() {
 
     cmdCASE = commandtbl_get("Case");
     cmdCASE_ELSE = commandtbl_get("Case Else");
-    cmdCFUN = INVALID_COMMAND_TOKEN;
+    cmdCFUN = commandtbl_get("CFunction");
     cmdCSUB = commandtbl_get("CSub");
     cmdDATA = commandtbl_get("Data");
     cmdDEFINEFONT = commandtbl_get("DefineFont");
@@ -221,6 +234,7 @@ void commandtbl_init() {
     cmdELSE_IF = commandtbl_get("Else If");
     cmdENDIF = commandtbl_get("EndIf");
     cmdEND_CSUB = commandtbl_get("End CSub");
+    cmdEND_CFUNCTION = commandtbl_get("End CFunction");
     cmdEND_DEFINEFONT = commandtbl_get("End DefineFont");
     cmdEND_FUNCTION = commandtbl_get("End Function");
     cmdEND_IF = commandtbl_get("End If");

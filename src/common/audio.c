@@ -1330,3 +1330,33 @@ MmResult audio_set_volume(uint8_t left, uint8_t right) {
     audio_filter_volume[RIGHT_CHANNEL] = (float)mapping[right] / 2001.0f;
     return kOk;
 }
+
+const char *audio_state_name(void) {
+    switch (audio_state) {
+        case P_PAUSE_TONE:  return "PAUSED TONE";
+        case P_TONE:        return "TONE";
+        case P_PAUSE_SOUND: return "PAUSED SOUND";
+        case P_SOUND:       return "SOUND";
+        case P_WAV:         return "WAV";
+        case P_PAUSE_WAV:   return "PAUSED WAV";
+        case P_FLAC:        return "FLAC";
+        case P_PAUSE_FLAC:  return "PAUSED FLAC";
+        case P_MP3:         return "MP3";
+        case P_PAUSE_MP3:   return "PAUSED MP3";
+        case P_MOD:         return "MOD";
+        case P_PAUSE_MOD:   return "PAUSED MOD";
+        case P_TTS:         return "TTS";
+        default:            return "OFF";
+    }
+}
+
+const char *audio_track_name(void) {
+    switch (audio_state) {
+        case P_WAV: case P_FLAC: case P_MP3: case P_MOD:
+            if (audio_track_current >= 0) return audio_track_list[audio_track_current];
+            return "OFF";
+        default:
+            return "OFF";
+    }
+}
+

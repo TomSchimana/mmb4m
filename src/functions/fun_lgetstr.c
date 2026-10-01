@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/mmb4l.h"
 #include "../common/error.h"
+#include "../common/streamio.h"
 
 void fun_lgetstr(void) {
     void *ptr1 = NULL;
@@ -73,3 +74,28 @@ void fun_lgetstr(void) {
     *p = 0;
     targ = T_STR;
 }
+
+/**
+ * LINPUT(array%(), [#]fnbr, nbr): reads up to nbr bytes from file fnbr into
+ * the long string, which then holds exactly what was read; returns that
+ * count. As on the PicoMite, files only, not serial ports or the console.
+ */
+void fun_linput(void) {
+    getargs(&ep, 5, DELIM_COMMA);
+    if (argc != 5) ERROR_ARGUMENT_COUNT;
+    void *ptr1 = findvar(argv[0], V_FIND | V_EMPTY_OK);
+    if (!(vartbl[VarIndex].type & T_INT)) ERROR_ARG_NOT_INTEGER_ARRAY(1);
+    if (vartbl[VarIndex].dims[1] != 0) ERROR_INVALID_VARIABLE;
+    if (vartbl[VarIndex].dims[0] <= 0) ERROR_ARG_NOT_INTEGER_ARRAY(1);
+    if (vartbl[VarIndex].type & T_CONST) ERROR_CANNOT_CHANGE_A_CONSTANT;
+    int64_t *dest = (int64_t *) ptr1;
+    const int capacity = (vartbl[VarIndex].dims[0] - mmb_options.base) * 8;
+    const int fnbr = parse_file_number(argv[2], true);
+    if (fnbr == -1) ON_FAILURE_ERROR(kFileInvalidFileNumber);
+    const int nbr = getint(argv[4], 0, capacity);
+    if (fnbr == 0 || !streamio_is_file(fnbr)) error_throw_ex(kError, "Input from file only");
+    dest[0] = (int64_t) streamio_read(fnbr, (char *) &dest[1], nbr);
+    g_integer_rtn = dest[0];
+    g_rtn_type = T_INT;
+}
+

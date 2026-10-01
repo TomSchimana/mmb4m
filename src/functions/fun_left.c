@@ -44,6 +44,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/mmb4l.h"
 
+#include <string.h>
+
 // Return a substring offset by a number of characters from the left (beginning) of the string.
 // s$ = LEFT$( string$, nbr )
 void fun_left(void) {
@@ -59,3 +61,41 @@ void fun_left(void) {
     sret = s;
     targ = T_STR;
 }
+
+/**
+ * TRIM$(s$ [, mask$] [, where]): s$ without the characters of mask$ (default a
+ * space) at its left (L, the default), right (R) or both ends (B), as on the
+ * PicoMite. 'where' is the letter itself or a string beginning with it.
+ */
+void fun_trim(void) {
+    getargs(&ep, 5, DELIM_COMMA);
+    if (argc != 1 && argc != 3 && argc != 5) ERROR_ARGUMENT_COUNT;
+    const char *source = getCstring(argv[0]);
+    const char *mask = (argc >= 3 && *argv[2]) ? getCstring(argv[2]) : " ";
+    char where = 'L';
+    if (argc == 5) {
+        if (checkstring(argv[4], "L")) {
+            where = 'L';
+        } else if (checkstring(argv[4], "R")) {
+            where = 'R';
+        } else if (checkstring(argv[4], "B")) {
+            where = 'B';
+        } else {
+            where = *getCstring(argv[4]);
+            if (where != 'L' && where != 'R' && where != 'B') ERROR_SYNTAX;
+        }
+    }
+    int start = 0;
+    int end = (int) strlen(source) - 1;
+    if (where == 'L' || where == 'B') {
+        while (start <= end && strchr(mask, source[start])) start++;
+    }
+    if (where == 'R' || where == 'B') {
+        while (end >= start && strchr(mask, source[end])) end--;
+    }
+    g_string_rtn = GetTempStrMemory();
+    g_string_rtn[0] = end - start + 1;
+    memcpy(g_string_rtn + 1, source + start, end - start + 1);
+    g_rtn_type = T_STR;
+}
+

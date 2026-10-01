@@ -351,6 +351,7 @@ MmResult serial_open(const char *comspec_str, int fnbr) {
 
     entry->type = fet_serial;
     entry->serial_fd = fd;
+    serial_open_count++;
     if (comspec.rx_interrupt_addr) {
         interrupt_enable_serial_rx(fnbr, comspec.rx_interrupt_count, comspec.rx_interrupt_addr);
     }
@@ -361,12 +362,16 @@ MmResult serial_open(const char *comspec_str, int fnbr) {
     return kOk;
 }
 
+/** Serial ports open now; perform_background_tasks() pumps none while it is 0. */
+int serial_open_count = 0;
+
 MmResult serial_close(int fnbr) {
     ON_FAILURE_RETURN(serial_validate_fnbr(fnbr));
 
     FileEntry *entry = &(file_table[fnbr]);
     close(entry->serial_fd);
     entry->type = fet_closed;
+    if (serial_open_count > 0) serial_open_count--;
     entry->serial_fd = 0;
     FreeMemory(entry->rx_buf.data);
     interrupt_disable_serial_rx(fnbr);

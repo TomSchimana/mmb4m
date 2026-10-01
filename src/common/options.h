@@ -74,6 +74,7 @@ typedef enum {
     kOptionListCase, // Alphabetically ordered as if it were kOptionCase.
     kOptionCodePage,
     kOptionConsole,
+    kOptionContinuationLines,
     kOptionDefaultType,
     kOptionEditor,
     kOptionExplicitType,
@@ -172,6 +173,7 @@ typedef struct {
     OptionsSimulate simulate;
     bool syntax_highlight;
     char tab;
+    bool continuation_lines;  // OPTION CONTINUATION LINES, as on the PicoMite
 
 #if defined OPTION_TESTS
     bool    zboolean;

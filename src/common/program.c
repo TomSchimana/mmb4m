@@ -552,11 +552,15 @@ static MmResult program_handle_comment_directive(const char *p) {
 static MmResult program_handle_define_directive(const char *p) {
     getargs(&p, 3, DELIM_COMMA);
     if (argc != 3) return kSyntax;
+    // Evaluating each string takes a second temporary buffer besides the one
+    // returned; taken one level up, ClearTempMemory() returns all of them and
+    // leaves the replacement map alone.
+    LocalIndex++;
     /*const*/ char *from = getCstring(argv[0]);
     /*const*/ char *to = getCstring(argv[2]);
     MmResult result = program_add_define(from, to);
-    ClearSpecificTempMemory(from);
-    ClearSpecificTempMemory(to);
+    ClearTempMemory();
+    LocalIndex--;
     return result;
 }
 
@@ -623,6 +627,24 @@ MmResult program_process_file() {
         // Read a program line.
         memset(inpbuf, 0, STRINGSIZE);
         MMgetline(program_file_stack->head->fnbr, inpbuf);
+        const int first_line = program_file_stack->head->line_num;
+
+        // OPTION CONTINUATION LINES: a line ending in " _" goes on in the next
+        // one, as on the PicoMite; errors name the first of them.
+        size_t len;
+        while (mmb_options.continuation_lines
+                && (len = strlen(inpbuf)) >= 2 && inpbuf[len - 1] == '_' && inpbuf[len - 2] == ' '
+                && !streamio_eof(program_file_stack->head->fnbr)) {
+            char next[STRINGSIZE] = { 0 };
+            MMgetline(program_file_stack->head->fnbr, next);
+            program_file_stack->head->line_num++;
+            inpbuf[len - 2] = '\0';
+            if (FAILED(cstring_cat(inpbuf, next, STRINGSIZE))) {
+                result = kLineTooLong;
+                break;
+            }
+        }
+        if (FAILED(result)) break;
 
         // Pre-process the line.
         result = program_process_line(inpbuf);
@@ -644,7 +666,7 @@ MmResult program_process_file() {
                 if (SUCCEEDED(result)) result = cstring_cat(inpbuf, program_file_stack->head->filename, STRINGSIZE);
                 if (SUCCEEDED(result)) result = cstring_cat(inpbuf, ",", STRINGSIZE);
             }
-            if (SUCCEEDED(result)) result = cstring_cat_int64(inpbuf, program_file_stack->head->line_num, STRINGSIZE);
+            if (SUCCEEDED(result)) result = cstring_cat_int64(inpbuf, first_line, STRINGSIZE);
             if (FAILED(result)) {
                 result = kLineTooLong;
                 break;
@@ -824,7 +846,8 @@ static void program_process_blobs() {
         }
 
         const CommandToken cmd = commandtbl_decode(p);
-        if (cmd == cmdCSUB || cmd == cmdDEFINEFONT) {
+        // A CFUNCTION (CMM2 V6) is stored and skipped as a CSUB is.
+        if (cmd == cmdCSUB || cmd == cmdCFUN || cmd == cmdDEFINEFONT) {
             if (cmd == cmdDEFINEFONT) {
                 end_token = cmdEND_DEFINEFONT;
 
@@ -844,7 +867,7 @@ static void program_process_blobs() {
                 // Store the font number - 1.
                 *((uint64_t *) flash_ptr) = fontnbr - 1;
             } else {
-                end_token = cmdEND_CSUB;
+                end_token = (cmd == cmdCFUN) ? cmdEND_CFUNCTION : cmdEND_CSUB;
                 // Store the address of the CSUB token in the program.
                 *((uint64_t *) flash_ptr) = (uintptr_t) p;
 

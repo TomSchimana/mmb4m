@@ -55,6 +55,9 @@ int serial_eof(int fnbr);
 MmResult serial_flush(int fnbr);
 int serial_getc(int fnbr);
 void serial_pump_input(int fnbr);
+
+/** The number of serial ports open. */
+extern int serial_open_count;
 int serial_putc(int fnbr, int ch);
 int serial_rx_queue_size(int fnbr);
 int serial_write(int fnbr, const char *buf, size_t sz);

@@ -49,6 +49,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/parse.h"
 #include "../common/program.h"
 #include "../common/utility.h"
+#include "../core/commandtbl.h"
+
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
 /**
  * LOAD BMP file$ [, x] [, y]
@@ -67,10 +72,23 @@ static MmResult cmd_load_bmp(const char *p) {
     return image_load_bmp(graphics_current, filename, x, y);
 }
 
-/** LOAD DATA file$, address */
+/** LOAD DATA file$, address: the file's bytes written to memory from address on, as on the PicoMite. */
 static MmResult cmd_load_data(const char *p) {
-    ERROR_UNIMPLEMENTED("LOAD DATA");
-    return kUnimplemented;
+    getargs(&p, 3, DELIM_COMMA);
+    if (argc != 3) return kArgumentCount;
+    char *filename = GetTempStrMemory();
+    ON_FAILURE_RETURN(parse_filename(argv[0], filename, STRINGSIZE));
+    char *to = (char *) get_poke_addr(argv[2]);
+    FILE *f = fopen(filename, "rb");
+    if (!f) return errno;
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        memcpy(to, buf, n);
+        to += n;
+    }
+    fclose(f);
+    return kOk;
 }
 
 /** LOAD FONT file$ */
@@ -131,16 +149,34 @@ static MmResult cmd_load_png(const char *p) {
     return image_load_png(graphics_current, filename, x, y, transparent, force);
 }
 
-/** LOAD file$ */
+/**
+ * LOAD file$ [,C] [,R], as on the PicoMite. R runs the program at once and is
+ * the only form allowed in a program, which chains to the other one. C, which
+ * removes comments, blank lines and spaces, is what the loader always does here.
+ */
 static MmResult cmd_load_default(const char *p) {
-    const DelimType delim[] = { ' ', ',' , 0 };
-    getargs(&p, 1, delim);
-    if (argc != 1) return kArgumentCount;
+    getargs(&p, 5, DELIM_COMMA);
+    if (argc != 1 && argc != 3 && argc != 5) return kArgumentCount;
+    bool run = false;
+    for (int i = 2; i < argc; i += 2) {
+        if (checkstring(argv[i], "R")) {
+            run = true;
+        } else if (!checkstring(argv[i], "C")) {
+            return kSyntax;
+        }
+    }
+    if (!run && CurrentLinePtr) return mmresult_ex(kError, "Invalid in a program");
 
     char *filename = GetTempStrMemory();
     ON_FAILURE_RETURN(parse_filename(argv[0], filename, STRINGSIZE));
+    if (!run) return program_load_file(filename);
 
-    return program_load_file(filename);
+    // As RUN file$ would.
+    static char run_args[STRINGSIZE + 2];
+    snprintf(run_args, sizeof(run_args), "\"%s\"", filename);
+    cmdline = run_args;
+    cmd_run();
+    return kOk;
 }
 
 void cmd_load(void) {

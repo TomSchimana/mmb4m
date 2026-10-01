@@ -46,6 +46,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/features.h"
 #include "../common/graphics.h"
 #include "../common/image.h"
+#include "../common/cstring.h"
+#include "../common/parse.h"
+#include "../common/path.h"
+#include "../common/program.h"
+
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
 /**
  * SAVE [COMPRESSED|IMAGE|1BPP|24BPP|32BPP|RGB121|RGB121_RLE4|RGB222|
@@ -89,6 +97,58 @@ static MmResult cmd_save_jpg(const char *p) {
     return image_save_jpg(graphics_current, filename, x, y, w, h, 100);
 }
 
+/** SAVE DATA file$, address, nbytes: nbytes of memory from address on written to the file, as on the PicoMite. */
+static MmResult cmd_save_data(const char *p) {
+    getargs(&p, 5, DELIM_COMMA);
+    if (argc != 5) return kArgumentCount;
+    char *filename = GetTempStrMemory();
+    ON_FAILURE_RETURN(parse_filename(argv[0], filename, STRINGSIZE));
+    const char *from = (const char *) get_peek_addr(argv[2]);
+    const MMINTEGER n = getinteger(argv[4]);
+    if (n < 0) return mmresult_ex(kError, "Number out of bounds");
+    FILE *f = fopen(filename, "wb");
+    if (!f) return errno;
+    const size_t written = fwrite(from, 1, n, f);
+    if (fclose(f) != 0 || written != (size_t) n) return errno ? errno : kError;
+    return kOk;
+}
+
+/**
+ * SAVE file$: the program as loaded, written to file$ (".bas" added when it
+ * has no extension), as on the PicoMite. The program here is its source file,
+ * so that file is copied.
+ */
+static MmResult cmd_save_program(const char *p) {
+    getargs(&p, 1, DELIM_COMMA);
+    if (argc != 1) return mmresult_ex(kSyntax, "Unknown SAVE subcommand: %s", p);
+    if (!*CurrentFile) return mmresult_ex(kError, "Nothing to save");
+    char *filename = GetTempStrMemory();
+    ON_FAILURE_RETURN(parse_filename(argv[0], filename, STRINGSIZE));
+    if (strlen(path_get_extension(filename)) == 0) {
+        ON_FAILURE_RETURN(cstring_cat(filename, ".bas", STRINGSIZE));
+    }
+    FILE *in = fopen(CurrentFile, "rb");
+    if (!in) return errno;
+    FILE *out = fopen(filename, "wb");
+    if (!out) {
+        const int e = errno;
+        fclose(in);
+        return e;
+    }
+    char buf[4096];
+    size_t n;
+    MmResult result = kOk;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            result = errno;
+            break;
+        }
+    }
+    fclose(in);
+    if (fclose(out) != 0 && result == kOk) result = errno;
+    return result;
+}
+
 void cmd_save(void) {
     MmResult result = kOk;
     const char *p;
@@ -126,8 +186,10 @@ void cmd_save(void) {
         result = cmd_save_image(p, kBmpFormat32bpp);
     } else if ((p = checkstring(cmdline, "JPG"))) {
         result = cmd_save_jpg(p);
+    } else if ((p = checkstring(cmdline, "DATA"))) {
+        result = cmd_save_data(p);
     } else {
-        result = mmresult_ex(kSyntax, "Unknown SAVE subcommand: %s", cmdline);
+        result = cmd_save_program(cmdline);
     }
     ON_FAILURE_ERROR(result);
 }

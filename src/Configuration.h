@@ -53,16 +53,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define FLOAT_ROUNDING_LIMIT 0x7fffff               // used to limit rounding for large numbers in FloatToInt64()
 
 // these 3 represent most of the RAM used
-#define PROG_FLASH_SIZE     (512 * 1024)            // size of the program memory (in bytes)
+#define PROG_FLASH_SIZE     (1024 * 1024)           // size of the program memory (in bytes)
 // #define HEAP_SIZE        (512 * 1024)            // size of the heap memory (in bytes)
-#define HEAP_SIZE           (512 * 1024 * 2)        // size of the heap memory (in bytes)
-#define MAXVARS             1024                    // 8 + MAXVARLEN + MAXDIM * 2  (ie, 56 bytes) - these do not incl array members
-#define VARS_HASHMAP_SIZE   1371                    // Size of the variables hash table
+#define HEAP_SIZE           (128 * 1024 * 1024)     // size of the heap memory (in bytes)
+#define MAXVARS             2048                    // 8 + MAXVARLEN + MAXDIM * 2  (ie, 56 bytes) - these do not incl array members
+#define VARS_HASHMAP_SIZE   2731                    // Size of the variables hash table
                                                     //  - first prime number at least 1/3 greater than MAXVARS.
 
 // more static memory allocations (less important)
-#define MAXFORLOOPS         50                      // each entry uses 17 bytes
-#define MAXDOLOOPS          50                      // each entry uses 12 bytes
+#define MAXFORLOOPS         128                     // each entry uses 17 bytes
+#define MAXDOLOOPS          128                     // each entry uses 12 bytes
 #define MAXGOSUB            1000                    // each entry uses 4 bytes
 #define MAX_MULTILINE_IF    20                      // each entry uses 8 bytes
 #define MAXTEMPSTRINGS      256                     // each entry takes up 4 bytes
@@ -75,7 +75,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAXVARLEN           32                      // maximum length of a variable name
 #define MAXSTRLEN           255                     // maximum length of a string
 #define STRINGSIZE          256                     // must be 1 more than MAXSTRLEN.  2 of these buffers are staticaly created
-#define MAXOPENFILES        10                      // maximum number of open files
+#define MAXOPENFILES        128                     // maximum number of open files
 #define MAXDIM              8                       // maximum nbr of dimensions to an array
 #define TRACE_BUFF_SIZE     128                     // capacity of the trace buffer
 //#define MAXERRMSG           32                      // max error msg size (MM.ErrMsg$ is truncated to this)

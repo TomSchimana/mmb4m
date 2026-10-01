@@ -201,6 +201,7 @@ void ExecuteProgram(const char *p) {
         // LOG_DEBUG("Executing line %d: %s", CountLines(p), FMT_CSTRING(p));
         if(*p == T_NEWLINE) {
             CurrentLinePtr = p;                                     // and pointer to the line for error reporting
+            if (mmb_profiling) profile_line(p);
 #if !defined(MX170)
             TraceBuff[TraceBuffIndex] = p;                          // used by TRACE LIST
             if(++TraceBuffIndex >= TRACE_BUFF_SIZE) TraceBuffIndex = 0;
@@ -266,6 +267,7 @@ void ExecuteProgram(const char *p) {
                         cmdtoken = commandtbl_decode(p);
                         targ = T_CMD;
                         mmresult_clear();
+                        if (mmb_profiling) profile_command(cmdtoken);
                         commandtbl[cmdtoken].fptr();                // execute the command
                     } else {
                         if (!isnamestart(*p)) error("Invalid character: %", (int)(*p));
@@ -555,6 +557,9 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
     DefinedSubFunSaveState(&caller_state);
     error_set_callback(DefinedSubFunRestoreStateCb, &caller_state);
     const char *SubLinePtr = funtbl[index].addr;                    // used for error reporting
+    // A CSUB or CFUNCTION holds machine code for the device it was written for.
+    const CommandToken def_token = commandtbl_decode(SubLinePtr);
+    if (def_token == cmdCSUB || def_token == cmdCFUN) ON_FAILURE_ERROR(kUnsupportedOnCurrentDevice);
     const char *p =  SubLinePtr + sizeof(CommandToken);             // point to the sub or function definition
     skipspace(p);
     const char *ttp = p;
@@ -655,6 +660,7 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
     errorstack[gosubindex] = caller_state.line_ptr;
     substack[gosubindex] = SubLinePtr;
     gosubstack[gosubindex++] = isfun ? NULL : nextstmt;             // NULL signifies that this is returned to by ending ExecuteProgram()
+    if (mmb_profiling) profile_sub_enter(index, gosubindex);
 
     // allocate memory for processing the arguments
     union u_argval {
@@ -892,6 +898,7 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
 
     error_clear_callback();
     ExecuteProgram(p);                                              // execute the function's code
+    if (mmb_profiling) profile_sub_leave(gosubindex);
 
     // return the value of the function's variable to the caller
     if(FunType & T_NBR)
@@ -1087,6 +1094,14 @@ void tokenise(int console) {
                 }
             }
         } else {
+            // >>> is the Colour Maximite 2's shift right keeping the sign. It is
+            // read here, ahead of the table search that would take it for >>.
+            if (p[0] == '>' && p[1] == '>' && p[2] == '>') {
+                tokentbl_write(&op, tokentbl_get(">>>"));
+                p += 3;
+                firstnonwhite = false;
+                continue;
+            }
             // check to see if it is a function or keyword
             const char *tp;
             char *tp2 = NULL;
@@ -1745,7 +1760,8 @@ const char *getvalue(const char* p, MMFLOAT* fa, MMINTEGER* ia, char** sa, Funct
             p++;                                                        // step over the quote
             char *p1 = s = (char *) GetTempMemory(STRINGSIZE);          // this will last for the life of the command
             tp = strchr(p, '"');
-            while (p != tp) *p1++ = *p++;
+            p1 += parse_string_constant(p, tp, p1);                     // OPTION ESCAPE replaces escape sequences
+            p = tp;
             p++;
             CtoM(s);                                                    // convert to a MMBasic string
             t = T_STR;
@@ -2644,6 +2660,10 @@ MmResult ClearRuntime(void) {
     ContinuePoint = NULL;
     ON_FAILURE_RETURN(funtbl_clear());
     TraceOn = false;
+    if (mmb_profiling) profile_reset();
+    mmb_flags = 0;
+    mmb_option_escape = false;
+    mmb_option_milliseconds = false;
 
     // LOG_DEBUG("mmb_options.console=%d", mmb_options.console);
     RETURN_RESULT(kOk);
@@ -3127,8 +3147,9 @@ void perform_background_tasks() {
         longjmp(mark, JMP_BREAK);  // jump back to the input prompt
     }
 
-    // Pump all the serial port connections for input.
-    for (int fnbr = 1; fnbr <= MAXOPENFILES; ++fnbr) {
+    // Pump all the serial port connections for input. This runs after every
+    // statement, so with 128 file numbers the loop is skipped when no port is open.
+    for (int fnbr = 1; serial_open_count > 0 && fnbr <= MAXOPENFILES; ++fnbr) {
         if (streamio_is_serial(fnbr)) {
             serial_pump_input(fnbr);
         }
@@ -3153,3 +3174,192 @@ MmResult get_current_function_name(char *buf, size_t buf_sz) {
     }
     return result == 0 ? kOk : kStringTooLong;
 }
+
+/********************************************************************************************************************************************
+ OPTION PROFILING, as on the PicoMite, and the per-line counts LIST PROFILE shows, as on the Colour Maximite 2
+*********************************************************************************************************************************************/
+
+bool mmb_profiling = false;
+
+typedef struct {
+    uint32_t *cmd_count;        // [commandtbl_size]
+    uint32_t *sub_calls;        // [MAXSUBFUN]
+    int64_t *sub_incl_ns;       // [MAXSUBFUN] inclusive, callees counted
+    int64_t *sub_excl_ns;       // [MAXSUBFUN] exclusive, self only
+    uint32_t *line_count;       // [PROG_FLASH_SIZE] by offset of the line's T_NEWLINE
+    int64_t *line_ns;           // [PROG_FLASH_SIZE]
+    uint64_t statements;
+    uint32_t user_subs;
+    int64_t start_ns;
+    int64_t line_start_ns;
+    int line_offset;            // -1 before the first line
+    struct { int index; int level; int64_t start_ns; int64_t child_ns; } stack[MAXGOSUB];
+    int depth;
+} Profile;
+
+static Profile profile = { 0 };
+
+static bool profile_alloc(void) {
+    if (!profile.cmd_count) {
+        profile.cmd_count = calloc(commandtbl_size, sizeof(uint32_t));
+        profile.sub_calls = calloc(MAXSUBFUN, sizeof(uint32_t));
+        profile.sub_incl_ns = calloc(MAXSUBFUN, sizeof(int64_t));
+        profile.sub_excl_ns = calloc(MAXSUBFUN, sizeof(int64_t));
+        profile.line_count = calloc(PROG_FLASH_SIZE, sizeof(uint32_t));
+        profile.line_ns = calloc(PROG_FLASH_SIZE, sizeof(int64_t));
+    }
+    return profile.cmd_count && profile.sub_calls && profile.sub_incl_ns && profile.sub_excl_ns
+            && profile.line_count && profile.line_ns;
+}
+
+void profile_reset(void) {
+    if (!profile_alloc()) return;
+    memset(profile.cmd_count, 0, commandtbl_size * sizeof(uint32_t));
+    memset(profile.sub_calls, 0, MAXSUBFUN * sizeof(uint32_t));
+    memset(profile.sub_incl_ns, 0, MAXSUBFUN * sizeof(int64_t));
+    memset(profile.sub_excl_ns, 0, MAXSUBFUN * sizeof(int64_t));
+    memset(profile.line_count, 0, PROG_FLASH_SIZE * sizeof(uint32_t));
+    memset(profile.line_ns, 0, PROG_FLASH_SIZE * sizeof(int64_t));
+    profile.statements = 0;
+    profile.user_subs = 0;
+    profile.start_ns = mmtime_now_ns();
+    profile.line_offset = -1;
+    profile.depth = 0;
+}
+
+MmResult profile_enable(bool on) {
+    if (on) {
+        if (!profile_alloc()) return kOutOfMemory;
+        profile_reset();
+    }
+    mmb_profiling = on;
+    return kOk;
+}
+
+/** At the start of each program line: the time since the last one goes to that line. */
+void profile_line(const char *p) {
+    if (p < ProgMemory || p >= ProgMemory + PROG_FLASH_SIZE) {
+        profile.line_offset = -1;                                   // a line at the prompt
+        return;
+    }
+    const int64_t now = mmtime_now_ns();
+    if (profile.line_offset >= 0) profile.line_ns[profile.line_offset] += now - profile.line_start_ns;
+    profile.line_offset = p - ProgMemory;
+    profile.line_count[profile.line_offset]++;
+    profile.line_start_ns = now;
+}
+
+void profile_command(CommandToken cmd) {
+    profile.statements++;
+    if (cmd < commandtbl_size) profile.cmd_count[cmd]++;
+}
+
+/** A SUB or FUNCTION is entered at call depth 'level' (gosubindex after the push). */
+void profile_sub_enter(int index, int level) {
+    while (profile.depth > 0 && profile.stack[profile.depth - 1].level >= level) profile.depth--;
+    if (profile.depth >= MAXGOSUB || index < 0 || index >= MAXSUBFUN) return;
+    profile.statements++;
+    profile.user_subs++;
+    profile.sub_calls[index]++;
+    profile.stack[profile.depth].index = index;
+    profile.stack[profile.depth].level = level;
+    profile.stack[profile.depth].start_ns = mmtime_now_ns();
+    profile.stack[profile.depth].child_ns = 0;
+    profile.depth++;
+}
+
+/** The SUB or FUNCTION at call depth 'level' returns. */
+void profile_sub_leave(int level) {
+    while (profile.depth > 0 && profile.stack[profile.depth - 1].level > level) profile.depth--;
+    if (profile.depth == 0 || profile.stack[profile.depth - 1].level != level) return;
+    profile.depth--;
+    const int64_t incl = mmtime_now_ns() - profile.stack[profile.depth].start_ns;
+    const int index = profile.stack[profile.depth].index;
+    profile.sub_incl_ns[index] += incl;
+    profile.sub_excl_ns[index] += incl - profile.stack[profile.depth].child_ns;
+    if (profile.depth > 0) profile.stack[profile.depth - 1].child_ns += incl;
+}
+
+static void profile_sub_name(int index, char *name) {
+    int j = 0;
+    while (j < MAXVARLEN && funtbl[index].name[j]) {
+        name[j] = funtbl[index].name[j];
+        j++;
+    }
+    name[j] = '\0';
+    if (!j) strcpy(name, "(unknown)");
+}
+
+/** The [PERF] report END prints under OPTION PROFILING ON, in the PicoMite's layout. */
+void profile_report(void) {
+    if (!profile.cmd_count) return;
+    char buf[200];
+    const int64_t elapsed_us = (mmtime_now_ns() - profile.start_ns) / 1000;
+    snprintf(buf, sizeof(buf), "\r\n[PERF] elapsed=%lld us  statements=%llu  user_subs=%u\r\n",
+             (long long) elapsed_us, (unsigned long long) profile.statements, profile.user_subs);
+    display_puts(buf);
+
+    display_puts("[PERF] top commands by dispatch count:\r\n");
+    uint32_t *counts = calloc(commandtbl_size, sizeof(uint32_t));
+    if (counts) {
+        memcpy(counts, profile.cmd_count, commandtbl_size * sizeof(uint32_t));
+        for (int rank = 0; rank < 20; rank++) {
+            int best = -1;
+            for (int k = 0; k < commandtbl_size; k++) {
+                if (counts[k] && (best < 0 || counts[k] > counts[best])) best = k;
+            }
+            if (best < 0) break;
+            snprintf(buf, sizeof(buf), "  %10u  %s\r\n", counts[best], commandname(best));
+            display_puts(buf);
+            counts[best] = 0;
+        }
+        free(counts);
+    }
+
+    char name[MAXVARLEN + 1];
+    int64_t *excl = calloc(MAXSUBFUN, sizeof(int64_t));
+    uint32_t *calls = calloc(MAXSUBFUN, sizeof(uint32_t));
+    if (excl && calls && profile.user_subs) {
+        memcpy(excl, profile.sub_excl_ns, MAXSUBFUN * sizeof(int64_t));
+        memcpy(calls, profile.sub_calls, MAXSUBFUN * sizeof(uint32_t));
+        display_puts("[PERF] top SUBs by exclusive (self) time:\r\n");
+        display_puts("       self_us    incl_us     calls   self_us/call  name\r\n");
+        for (int rank = 0; rank < 20; rank++) {
+            int best = -1;
+            for (int k = 0; k < MAXSUBFUN; k++) {
+                if (calls[k] && (best < 0 || excl[k] > excl[best])) best = k;
+            }
+            if (best < 0) break;
+            profile_sub_name(best, name);
+            snprintf(buf, sizeof(buf), "  %12lld  %10lld  %8u  %12lld  %s\r\n",
+                     (long long) (excl[best] / 1000), (long long) (profile.sub_incl_ns[best] / 1000),
+                     calls[best], (long long) (excl[best] / 1000 / calls[best]), name);
+            display_puts(buf);
+            calls[best] = 0;
+        }
+        memcpy(calls, profile.sub_calls, MAXSUBFUN * sizeof(uint32_t));
+        display_puts("[PERF] top SUBs by call count:\r\n");
+        for (int rank = 0; rank < 20; rank++) {
+            int best = -1;
+            for (int k = 0; k < MAXSUBFUN; k++) {
+                if (calls[k] && (best < 0 || calls[k] > calls[best])) best = k;
+            }
+            if (best < 0) break;
+            profile_sub_name(best, name);
+            snprintf(buf, sizeof(buf), "  %10u  %s\r\n", calls[best], name);
+            display_puts(buf);
+            calls[best] = 0;
+        }
+    }
+    free(excl);
+    free(calls);
+    (void) display_flush();
+}
+
+bool profile_line_stats(const char *p, uint32_t *count, int64_t *ns) {
+    if (!profile.line_count || p < ProgMemory || p >= ProgMemory + PROG_FLASH_SIZE) return false;
+    *count = profile.line_count[p - ProgMemory];
+    *ns = profile.line_ns[p - ProgMemory];
+    return true;
+}
+

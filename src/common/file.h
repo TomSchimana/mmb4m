@@ -74,7 +74,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 // Maximum number of files returned by file_list()
-#define FILE_LIST_MAX  512
+#define FILE_LIST_MAX  2048
 
 // Forward declaration for directory stream structure
 struct s_DirStream;

@@ -49,6 +49,7 @@ void cmd_return(void) {
     if(gosubindex == 0 || gosubstack[gosubindex - 1] == NULL) {
         error_throw_legacy("Nothing to return to");
     }
+    if (mmb_profiling) profile_sub_leave(gosubindex);
     ClearVars(LocalIndex--);                                        // delete any local variables
     TempMemoryIsChanged = true;                                     // signal that temporary memory should be checked
     nextstmt = gosubstack[--gosubindex];                            // return to the caller

@@ -149,7 +149,7 @@ const struct s_tokentbl tokentbl[] = {
     { "Tab(",        T_FUN | T_STR,      0, fun_tab,     },
     { "Tan(",        T_FUN | T_NBR,      0, fun_tan      },
     { "Time$",       T_FNA | T_STR,      0, fun_time     },
-    { "Timer",       T_FNA | T_INT,      0, fun_timer    },
+    { "Timer",       T_FNA | T_NBR,      0, fun_timer    },
     { "UCase$(",     T_FUN | T_STR,      0, fun_ucase    },
     { "Val(",        T_FUN | T_NBR | T_INT, 0, fun_val   },
 
@@ -192,6 +192,17 @@ const struct s_tokentbl tokentbl[] = {
     { "MM.HPos",     T_FNA | T_INT,      0, fun_mmhpos   },
     { "MM.VPos",     T_FNA | T_INT,      0, fun_mmvpos   },
     { "MM.Width",    T_FNA | T_INT,      0, fun_mmwidth  },
+    { "Bit(",        T_FUN | T_INT,      0, fun_bit      },
+    { "Byte(",       T_FUN | T_INT,      0, fun_byte     },
+    { "Flag(",       T_FUN | T_INT,      0, fun_flag     },
+    { "MM.Flags",    T_FNA | T_INT,      0, fun_mmflags  },
+    { "MM.ErrLine",  T_FNA | T_INT,      0, fun_mmerrline },
+    { "MM.Esc",      T_FNA | T_INT,      0, fun_mmesc    },
+    { "Trim$(",      T_FUN | T_STR,      0, fun_trim     },
+    { "Base$(",      T_FUN | T_STR,      0, fun_base     },
+    { "LInput(",     T_FUN | T_INT,      0, fun_linput   },
+    { "MM.Pos",      T_FNA | T_INT,      0, fun_pos      },
+    { ">>>",         T_OPER | T_INT,     4, op_shiftright_signed },  // Read by tokenise(), see MMBasic.c
 
     { "",            0,                              0, cmd_null,    }  // This dummy entry is always at the end.
 };

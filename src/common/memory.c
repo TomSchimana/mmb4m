@@ -84,6 +84,7 @@ static unsigned int MBitsGet(void *addr);
 static void MBitsSet(void *addr, int bits);
 static int MemSize(void* addr);
 static void *getheap(int size);
+static void *GetSystemMemory(int size);
 
 /***********************************************************************************************************************
  Public memory management functions
@@ -143,7 +144,7 @@ void *GetTempMemory(int NbrBytes) {
     for(i = 0; i < MAXTEMPSTRINGS; i++) {
         if(StrTmp[i] == NULL) {
             StrTmpLocalIndex[i] = LocalIndex;
-            StrTmp[i] = GetMemory(NbrBytes);
+            StrTmp[i] = GetSystemMemory(NbrBytes);
             TempMemoryIsChanged = true;
             return StrTmp[i];
         }
@@ -276,6 +277,36 @@ static void *getheap(int size) {
             }
         } else
             n = j;                                                  // not enough space here so reset our count
+    }
+    // out of memory
+    LocalIndex = 0;
+    ClearTempMemory();                                              // hopefully this will give us enough to print the prompt
+    ERROR_OUT_OF_MEMORY;
+    return NULL;                                                    // keep the compiler happy
+}
+
+// Get memory from the bottom of the heap up, as GetSystemMemory() on the PicoMite does
+// for temporary memory: variables and arrays come from the top down, so the search
+// for a temporary buffer does not have to pass them. The bottom page stays unused,
+// as in getheap().
+static void *GetSystemMemory(int size) {
+    unsigned int n = 0, k;
+    char *addr;
+    k = (size + PAGESIZE - 1)/PAGESIZE;                             // nbr of pages rounded up
+    for(addr = MMHeap + PAGESIZE; addr < (char *) RAMEND; addr += PAGESIZE) {
+        if(!(MBitsGet(addr) & PUSED)) {
+            if(++n == k) {                                          // found a free slot
+                k--;
+                MBitsSet(addr, PUSED | PLAST);                      // show that this is used and the last in the chain of pages
+                while(k--) {
+                    addr -= PAGESIZE;
+                    MBitsSet(addr, PUSED);
+                }
+                memset(addr, 0, size);                              // zero the memory
+                return (void *)addr;
+            }
+        } else
+            n = 0;                                                  // not enough space here so reset our count
     }
     // out of memory
     LocalIndex = 0;

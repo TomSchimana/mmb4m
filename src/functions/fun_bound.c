@@ -49,9 +49,15 @@ void fun_bound(void) {
     int which = (argc == 3) ? getint(argv[2], 0, MAXDIM) : 1;
     findvar(argv[0], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
 
+    if (which != 0) {
+        // As on the PicoMite: an upper bound of 0 is a real bound under
+        // OPTION BASE 0, so a dimension the variable lacks is an error.
+        if (g_var_tbl[g_current_var_idx].dims[0] == 0) error_throw_ex(kError, "Expected an array");
+        if (g_var_tbl[g_current_var_idx].dims[which - 1] == 0) error_throw_ex(kError, "Dimensions");
+    }
     g_integer_rtn = (which == 0)
             ? mmb_options.base
             : g_var_tbl[g_current_var_idx].dims[which - 1];
-    if (g_integer_rtn == -1) g_integer_rtn = 0;
+    if (g_integer_rtn == -1) g_integer_rtn = 0;  // unbound empty array parameter
     g_rtn_type = T_INT;
 }

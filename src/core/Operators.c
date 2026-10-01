@@ -241,6 +241,11 @@ void op_shiftright(void) {
     iret = (long long int)((unsigned long long int)iarg1 >> (long long int)iarg2);
 }
 
+// >>> shifts right keeping the sign, as on the Colour Maximite 2; >> does not.
+void op_shiftright_signed(void) {
+    iret = (long long int)iarg1 >> (long long int)iarg2;
+}
+
 
 void op_and(void) {
     iret = (long long int)((unsigned long long int)iarg1 & (unsigned long long int)iarg2);

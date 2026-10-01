@@ -50,6 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void cmd_do(void) {
     int i;
     const char *p, *tp, *evalp = NULL;
+    bool untiltest = false;
     const bool whileloop = (cmdtoken == cmdWHILE);
     CommandToken looptoken = whileloop ? cmdWEND : cmdLOOP;
 
@@ -65,7 +66,8 @@ void cmd_do(void) {
         } else if (funtok == tokenWHILE) {
             evalp = cmdline;
         } else if (funtok == tokenUNTIL) {
-            error_throw_ex(kSyntax, "DO has an UNTIL test");
+            evalp = cmdline;
+            untiltest = true;
         } else {
             error_throw(kSyntax);
         }
@@ -81,6 +83,7 @@ void cmd_do(void) {
                 dostack[i].loopptr = dostack[i+1].loopptr;
                 dostack[i].doptr = dostack[i+1].doptr;
                 dostack[i].level = dostack[i+1].level;
+                dostack[i].untiltest = dostack[i+1].untiltest;
                 i++;
             }
             doindex--;
@@ -93,6 +96,7 @@ void cmd_do(void) {
     dostack[doindex].evalptr = evalp;
     dostack[doindex].doptr = nextstmt;
     dostack[doindex].level = LocalIndex;
+    dostack[doindex].untiltest = untiltest;
 
     // now find the matching LOOP command
     i = 1; p = nextstmt;
@@ -108,7 +112,7 @@ void cmd_do(void) {
     }
 
     if(!whileloop && dostack[doindex].evalptr != NULL) {
-        // if this is a DO WHILE ... LOOP statement
+        // if this is a DO WHILE ... LOOP or DO UNTIL ... LOOP statement
         // search the LOOP statement for a WHILE or UNTIL token (p is pointing to the matching LOOP statement)
         p += sizeof(CommandToken);
         while(*p && *p < 0x80) p++;
@@ -123,7 +127,8 @@ void cmd_do(void) {
     doindex++;
 
     // do the evaluation (if there is something to evaluate) and if false go straight to the command after the LOOP or WEND statement
-    if(dostack[doindex - 1].evalptr != NULL && getnumber(dostack[doindex - 1].evalptr) == 0) {
+    if(dostack[doindex - 1].evalptr != NULL
+            && (getnumber(dostack[doindex - 1].evalptr) != 0) == untiltest) {
         doindex--;                                                  // remove the entry in the table
         nextstmt = dostack[doindex].loopptr;                        // point to the LOOP or WEND statement
         skipelement(nextstmt);                                      // skip to the next command

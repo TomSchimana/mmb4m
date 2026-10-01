@@ -263,7 +263,8 @@ void longjmp_handler(int jmp_state) {
             break;
 
         case JMP_END:
-            mmb_state.exiting = !mmb_args.show_prompt;
+            // Without a prompt the program ends MMBasic, unless END cmd$ left a command.
+            mmb_state.exiting = !mmb_args.show_prompt && !*mmb_end_command;
             break;
 
         case JMP_ERROR:
@@ -499,16 +500,18 @@ int main(int argc, char *argv[]) {
             display_puts("\r\n");  // prompt should be on a new line
         }
         //PrepareProgram(false); // This seems superflous so comment it out and see what breaks!
-        // if (!ErrorInPrompt && FindSubFun("MM.PROMPT", kSub) >= 0) {
-        //     ErrorInPrompt = true;
-        //     ExecuteProgram("MM.PROMPT\0");
-        // } else {
-        if (mmb_args.show_prompt) {
+        // As on the CMM2: a SUB MM.PROMPT in the program prints the prompt
+        // instead; if it fails, the next prompt is the plain one.
+        static bool error_in_prompt = false;
+        if (mmb_args.show_prompt && !error_in_prompt && FindSubFun("MM.PROMPT", kSub) >= 0) {
+            error_in_prompt = true;
+            ExecuteProgram("MM.PROMPT\0");
+            display_flush();
+        } else if (mmb_args.show_prompt) {
             display_puts("> ");  // print the prompt
             display_flush();
         }
-        // }
-        // ErrorInPrompt = false;
+        error_in_prompt = false;
 
         // This will clear all the interrupts including ON KEY
         // TODO: is this too drastic ? it means all interrupts will have been
@@ -517,7 +520,17 @@ int main(int argc, char *argv[]) {
         interrupt_clear();
 
         memset(inpbuf, 0, INPBUF_SIZE);
-        if (run_flag) {
+        bool end_command = false;
+        if (*mmb_end_command) {
+            // END cmd$: the command the program left, run once at the prompt.
+            if (mmb_args.show_prompt) {
+                display_puts(mmb_end_command);
+                display_puts("\r\n");
+            }
+            strcpy(inpbuf, mmb_end_command);
+            *mmb_end_command = '\0';
+            end_command = true;
+        } else if (run_flag) {
             if (mmb_args.show_prompt) {
                 display_puts(mmb_args.run_cmd);
                 display_puts("\r\n");
@@ -536,6 +549,7 @@ int main(int argc, char *argv[]) {
         CurrentLinePtr = NULL;  // do not use the line number in error reporting
 
         ExecuteProgram(tknbuf);  // execute the line straight away
+        if (end_command) mmb_state.exiting = !mmb_args.show_prompt;
     }
 
     ON_FAILURE_LOG(streamio_close_all());

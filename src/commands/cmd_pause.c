@@ -103,3 +103,47 @@ void cmd_pause(void) {
         cmd_pause_in_main_program(duration_ns);
     }
 }
+
+/**
+ * SYNC time% [, U|M|S] sets a repeating clock, in microseconds unless M
+ * (milliseconds) or S (seconds) follows, and SYNC waits for its next tick, as
+ * on the PicoMite. SYNC 0 stops the clock. Over 2 ms of waiting answers
+ * Ctrl-C, but no MMBasic interrupts. macOS keeps it within tens of
+ * microseconds, not the PicoMite's one or two.
+ */
+void cmd_sync(void) {
+    static int64_t period_ns = 0, next_ns = 0;
+    getargs(&cmdline, 3, DELIM_COMMA);
+    if (argc == 0) {
+        if (!period_ns) error_throw_ex(kError, "sync not initialised");
+        int64_t now;
+        while ((now = mmtime_now_ns()) < next_ns) {
+            const int64_t left = next_ns - now;
+            if (left > MILLISECONDS_TO_NANOSECONDS(2)) {
+                perform_background_tasks();
+                mmtime_sleep_ns(MICROSECONDS_TO_NANOSECONDS(500));
+            } else if (left > MICROSECONDS_TO_NANOSECONDS(200)) {
+                mmtime_sleep_ns(MICROSECONDS_TO_NANOSECONDS(50));
+            }
+        }
+        next_ns += period_ns;
+        return;
+    }
+    if (argc != 1 && argc != 3) ERROR_ARGUMENT_COUNT;
+    int64_t t = getint(argv[0], 0, INT64_MAX / 1000000000);
+    int64_t unit_ns = 1000;
+    if (argc == 3) {
+        if (checkstring(argv[2], "U")) {
+            unit_ns = 1000;
+        } else if (checkstring(argv[2], "M")) {
+            unit_ns = 1000000;
+        } else if (checkstring(argv[2], "S")) {
+            unit_ns = 1000000000;
+        } else {
+            ERROR_SYNTAX;
+        }
+    }
+    period_ns = t * unit_ns;
+    next_ns = period_ns ? mmtime_now_ns() + period_ns : 0;
+}
+

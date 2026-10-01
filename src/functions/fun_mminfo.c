@@ -45,6 +45,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/statvfs.h>
+#include <time.h>
 
 #include "../common/mmb4l.h"
 #include "../common/cstring.h"
@@ -56,6 +58,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/gpio.h"
 #include "../common/graphics.h"
 #include "../common/keyboard.h"
+#include "../common/audio.h"
+#include "../common/memory.h"
 #include "../common/mmtime.h"
 #include "../common/parse.h"
 #include "../common/path.h"
@@ -698,6 +702,108 @@ void fun_mmwidth(void) {
     mminfo_hres("C", false);
 }
 
+
+// ---- As on the PicoMite, the Colour Maximite 2 and MMBasic for Windows ----
+
+/** MM.INFO(UPTIME): seconds since MMBasic started, as a float. */
+static void mminfo_uptime(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_float_rtn = (MMFLOAT) mmtime_get_uptime_ns() / 1e9;
+    g_rtn_type = T_NBR;
+}
+
+/** MM.INFO(VARCNT): variables in use, globals and locals. */
+static void mminfo_varcnt(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    int count = 0;
+    for (int i = 0; i < varcnt; i++) {
+        if (vartbl[i].type != T_NOTYPE) count++;
+    }
+    g_integer_rtn = count;
+    g_rtn_type = T_INT;
+}
+
+/** MM.INFO(MAX VARS) */
+static void mminfo_max_vars(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_integer_rtn = MAXVARS;
+    g_rtn_type = T_INT;
+}
+
+/** MM.INFO(HEAP): free bytes of the heap that holds arrays and strings. */
+static void mminfo_heap(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_integer_rtn = FreeSpaceOnHeap();
+    g_rtn_type = T_INT;
+}
+
+/** MM.INFO(FREE SPACE) and MM.INFO(DISK SIZE): bytes of the volume holding the current directory. */
+static void mminfo_volume(const char *p, bool free_space) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    struct statvfs st;
+    if (statvfs(".", &st) != 0) ON_FAILURE_ERROR(errno);
+    g_integer_rtn = (MMINTEGER) (free_space ? st.f_bavail : st.f_blocks) * (MMINTEGER) st.f_frsize;
+    g_rtn_type = T_INT;
+}
+
+/** MM.INFO(MODIFIED file$): "YYYY-MM-DD HH:MM:SS" in local time, or "" if there is no such file. */
+static void mminfo_modified(const char *p) {
+    const char *path = get_path(p);
+    FileInfo info;
+    ON_FAILURE_ERROR(file_info(path, &info));
+    g_string_rtn = GetTempStrMemory();
+    g_rtn_type = T_STR;
+    if (info.exists) {
+        struct tm tm;
+        localtime_r(&info.mtime, &tm);
+        strftime(g_string_rtn, STRINGSIZE, "%Y-%m-%d %H:%M:%S", &tm);
+    }
+    CtoM(g_string_rtn);
+}
+
+/** MM.INFO(SOUND): what is playing, "OFF" if nothing. */
+static void mminfo_sound(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_string_rtn = GetTempStrMemory();
+    cstring_cpy(g_string_rtn, audio_state_name(), STRINGSIZE);
+    CtoM(g_string_rtn);
+    g_rtn_type = T_STR;
+}
+
+/** MM.INFO(TRACK): the file playing, "OFF" if none. */
+static void mminfo_track(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_string_rtn = GetTempStrMemory();
+    cstring_cpy(g_string_rtn, audio_track_name(), STRINGSIZE);
+    CtoM(g_string_rtn);
+    g_rtn_type = T_STR;
+}
+
+/** MM.INFO(MODE): the screen mode with its colour depth after the point, 1.8 for MODE 1,8, as on the CMM2. */
+static void mminfo_mode(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    const MMFLOAT depth = (graphics_colour_depth == 8) ? 0.8
+                        : (graphics_colour_depth == 12) ? 0.12
+                        : (graphics_colour_depth == 16) ? 0.16 : 0.32;
+    g_float_rtn = graphics_mode + depth;
+    g_rtn_type = T_NBR;
+}
+
+/** MM.INFO(FAST TIME): a high-resolution clock in nanoseconds; on Windows the performance counter. */
+static void mminfo_fast_time(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    g_integer_rtn = mmtime_now_ns();
+    g_rtn_type = T_INT;
+}
+
+/** MM.INFO(FONTCOUNT): the number of characters in the current font. */
+static void mminfo_fontcount(const char *p) {
+    if (!parse_is_end(p)) ERROR_SYNTAX;
+    const uint32_t font_id = graphics_font >> 4;
+    g_integer_rtn = (font_id < FONT_TABLE_SIZE && FontTable[font_id]) ? FontTable[font_id][3] : 0;
+    g_rtn_type = T_INT;
+}
+
 void fun_mminfo(void) {
     const char *p;
     if ((p = checkstring(ep, "ARCH"))) {
@@ -782,6 +888,30 @@ void fun_mminfo(void) {
         mminfo_vpos(p);
     } else if ((p = checkstring(ep, "WRITEBUFF"))) {
         mminfo_writebuff(p);
+    } else if ((p = checkstring(ep, "UPTIME"))) {
+        mminfo_uptime(p);
+    } else if ((p = checkstring(ep, "VARCNT"))) {
+        mminfo_varcnt(p);
+    } else if ((p = checkstring(ep, "MAX VARS"))) {
+        mminfo_max_vars(p);
+    } else if ((p = checkstring(ep, "HEAP"))) {
+        mminfo_heap(p);
+    } else if ((p = checkstring(ep, "FREE SPACE"))) {
+        mminfo_volume(p, true);
+    } else if ((p = checkstring(ep, "DISK SIZE"))) {
+        mminfo_volume(p, false);
+    } else if ((p = checkstring(ep, "MODIFIED"))) {
+        mminfo_modified(p);
+    } else if ((p = checkstring(ep, "SOUND"))) {
+        mminfo_sound(p);
+    } else if ((p = checkstring(ep, "TRACK"))) {
+        mminfo_track(p);
+    } else if ((p = checkstring(ep, "MODE"))) {
+        mminfo_mode(p);
+    } else if ((p = checkstring(ep, "FAST TIME"))) {
+        mminfo_fast_time(p);
+    } else if ((p = checkstring(ep, "FONTCOUNT"))) {
+        mminfo_fontcount(p);
     } else {
         ERROR_UNKNOWN_SUBFUNCTION("MM.INFO");
     }

@@ -310,6 +310,18 @@ void fun_errno(void) {
 
 
 
+/** MM.ESC: 1 if OPTION ESCAPE is set, as on the Colour Maximite 2 V6. */
+void fun_mmesc(void) {
+    iret = mmb_option_escape ? 1 : 0;
+    targ = T_INT;
+}
+
+/** MM.ERRLINE: the line of the last error, 0 if none or at the prompt. */
+void fun_mmerrline(void) {
+    iret = mmb_error_state_ptr->code ? mmb_error_state_ptr->last_line : 0;
+    targ = T_INT;
+}
+
 void fun_errmsg(void) {
     sret = GetTempStrMemory();
     strcpy(sret, mmb_error_state_ptr->message);

@@ -91,6 +91,15 @@ static ErrorState interrupt_error_state;
 static Queue interrupt_window_event_queue;
 static Interrupt interrupt_list[kInterruptLast];
 
+/** MATH PID channels 1 to MAX_PID_CHANNELS, as on the PicoMite; entry 0 is unused. */
+typedef struct {
+    const char *interrupt_addr;
+    int64_t period_ns;
+    int64_t due_ns;
+    bool active;
+} PidTick;
+static PidTick interrupt_pid[MAX_PID_CHANNELS + 1];
+
 MmResult interrupt_init() {
     // Only expected to be called once on application startup.
     static bool called = false;
@@ -129,6 +138,7 @@ void interrupt_clear(void) {
         interrupt_serial_rx[i].count = 0;
         interrupt_serial_rx[i].interrupt_addr = NULL;
     }
+    memset(interrupt_pid, 0, sizeof(interrupt_pid));
     queue_clear(&interrupt_window_event_queue);
     for (size_t i = 0; i < kInterruptLast; ++i) memset(interrupt_list + i, 0, sizeof(Interrupt));
 }
@@ -273,8 +283,17 @@ bool interrupt_check(void) {
         return handle_interrupt(interrupt_specific_key_addr);
     }
 
-    // Check for SETTICK interrupts.
     int64_t now_ns = mmtime_now_ns();
+
+    // Check for MATH PID channels, first as on the PicoMite.
+    for (int i = 1; i <= MAX_PID_CHANNELS; ++i) {
+        if (interrupt_pid[i].active && now_ns >= interrupt_pid[i].due_ns) {
+            interrupt_pid[i].due_ns = now_ns + interrupt_pid[i].period_ns;
+            return handle_interrupt(interrupt_pid[i].interrupt_addr);
+        }
+    }
+
+    // Check for SETTICK interrupts.
     // printf("%ld\n", now_ns);
     for (int i = 0; i < NBRSETTICKS; ++i) {
         // printf("Interrupt %d, period = %ld, due = %ld, fn = %ld\n",
@@ -290,8 +309,8 @@ bool interrupt_check(void) {
         }
     }
 
-    // Check for serial port interrupts.
-    for (int i = 1; i <= MAXOPENFILES; ++i) {
+    // Check for serial port interrupts; none without an open port.
+    for (int i = 1; serial_open_count > 0 && i <= MAXOPENFILES; ++i) {
         SerialRxStruct *entry = &(interrupt_serial_rx[i]);
         if (entry->interrupt_addr
                 && serial_rx_queue_size(i) >= entry->count) {
@@ -448,6 +467,27 @@ void interrupt_fire_window_event(SDL_WindowEvent *event) {
     }
     ON_FAILURE_ERROR(result);
     if (queue_size(&interrupt_window_event_queue) == 1) interrupt_count++;
+}
+
+void interrupt_set_pid(int channel, const char *interrupt_addr, int64_t period_ns) {
+    assert(channel >= 1 && channel <= MAX_PID_CHANNELS);
+    if (interrupt_pid[channel].active) interrupt_count--;
+    interrupt_pid[channel].interrupt_addr = interrupt_addr;
+    interrupt_pid[channel].period_ns = period_ns;
+    interrupt_pid[channel].active = false;
+}
+
+MmResult interrupt_start_pid(int channel) {
+    assert(channel >= 1 && channel <= MAX_PID_CHANNELS);
+    if (!interrupt_pid[channel].interrupt_addr) return kError;
+    if (!interrupt_pid[channel].active) interrupt_count++;
+    interrupt_pid[channel].due_ns = mmtime_now_ns() + interrupt_pid[channel].period_ns;
+    interrupt_pid[channel].active = true;
+    return kOk;
+}
+
+bool interrupt_pid_active(int channel) {
+    return channel >= 1 && channel <= MAX_PID_CHANNELS && interrupt_pid[channel].active;
 }
 
 void interrupt_enable(InterruptType type, const char *fn) {

@@ -127,6 +127,9 @@ MmResult vartbl_add(
             for (int ii = 0; ii < MAXDIM && dims[ii] != 0; ++ii) {
                 if (dims[ii] <= mmb_options.base) return kInvalidArrayDimensions;
                 heap_sz *= (dims[ii] + 1 - mmb_options.base);
+                // With int bounds the product can pass what size_t holds;
+                // anything beyond the heap cannot be allocated anyway.
+                if (heap_sz > HEAP_SIZE) return kOutOfMemory;
             }
         } else {
             // "Empty" array used for fun/sub parameter lists.

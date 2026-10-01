@@ -261,6 +261,56 @@ void cmd_option(void) {
     const char *p;
     if ((p = checkstring(cmdline, "KEYBOARD"))) {
         // Ignored for now.
+    } else if ((p = checkstring(cmdline, "ESCAPE"))) {
+        // As on the PicoMite: string constants take escape sequences until the program ends.
+        if (!parse_is_end(p)) ERROR_SYNTAX;
+        mmb_option_escape = true;
+    } else if ((p = checkstring(cmdline, "CONTINUATION LINES"))) {
+        // As on the PicoMite: LIST shows long lines split, each piece ending
+        // with " _", and loading a program joins them again. Saved like the
+        // other options; ENABLE and DISABLE as well as ON and OFF. The
+        // PicoMite's editor splits lines too; this one does not.
+        const char *q;
+        int value;
+        if ((q = checkstring(p, "ON")) || (q = checkstring(p, "ENABLE"))) {
+            value = 1;
+        } else if ((q = checkstring(p, "OFF")) || (q = checkstring(p, "DISABLE"))) {
+            value = 0;
+        } else {
+            ERROR_SYNTAX;
+        }
+        if (!parse_is_end(q)) ERROR_SYNTAX;
+        ON_FAILURE_ERROR(options_set_integer_value(&mmb_options, kOptionContinuationLines, value));
+        MmResult result = options_save(&mmb_options, options_filename);
+        if (FAILED(result)) {
+            display_puts("Warning: failed to save options: ");
+            display_puts(mmresult_to_string(result));
+            display_puts("\r\n");
+        }
+    } else if ((p = checkstring(cmdline, "MILLISECONDS"))) {
+        // As on the PicoMite and the CMM2: TIME$ gives HH:MM:SS.mmm until the program ends.
+        const char *q;
+        if ((q = checkstring(p, "ON"))) {
+            if (!parse_is_end(q)) ERROR_SYNTAX;
+            mmb_option_milliseconds = true;
+        } else if ((q = checkstring(p, "OFF"))) {
+            if (!parse_is_end(q)) ERROR_SYNTAX;
+            mmb_option_milliseconds = false;
+        } else {
+            ERROR_SYNTAX;
+        }
+    } else if ((p = checkstring(cmdline, "PROFILING"))) {
+        // As on the PicoMite: counts commands, SUBs and lines; END prints the report.
+        const char *q;
+        if ((q = checkstring(p, "ON"))) {
+            if (!parse_is_end(q)) ERROR_SYNTAX;
+            ON_FAILURE_ERROR(profile_enable(true));
+        } else if ((q = checkstring(p, "OFF"))) {
+            if (!parse_is_end(q)) ERROR_SYNTAX;
+            ON_FAILURE_ERROR(profile_enable(false));
+        } else {
+            ERROR_SYNTAX;
+        }
     } else if ((p = checkstring(cmdline, "LIST"))) {
         cmd_option_list(p);
     } else if ((p = checkstring(cmdline, "LOAD"))) {

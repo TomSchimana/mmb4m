@@ -91,6 +91,45 @@ static void ListProgram(const char *p, int all) {
     }
 }
 
+/**
+ * LIST PROFILE, as on the Colour Maximite 2: each line of the program with the
+ * times it ran and the average microseconds it took, from OPTION PROFILING ON.
+ */
+static MmResult cmd_list_profile(const char *p) {
+    if (!parse_is_end(p)) return kUnexpectedText;
+    if (CurrentLinePtr) return mmresult_ex(kError, "Invalid in a program");
+    const char *q = ProgMemory;
+    uint32_t count;
+    int64_t ns;
+    if (*q != T_NEWLINE || !profile_line_stats(q, &count, &ns)) {
+        return mmresult_ex(kError, "Profiling not enabled");
+    }
+    char b[STRINGSIZE];
+    char buf[64];
+    int ListCnt = 1;
+    while (!(*q == 0 || *q == 0xff)) {
+        if (*q == T_NEWLINE) {
+            (void) profile_line_stats(q, &count, &ns);
+            if (count) {
+                snprintf(buf, sizeof(buf), "%10u %10.1f  ", count, (double) ns / count / 1000.0);
+            } else {
+                snprintf(buf, sizeof(buf), "%10s %10s  ", "", "");
+            }
+            display_puts(buf);
+            q = llist(b, q);
+            char *marker = strstr(b, "'|");                         // the loader's file and line note
+            if (marker) *marker = '\0';
+            display_puts(b);
+            ON_FAILURE_RETURN(display_flush());
+            ListNewLine(&ListCnt, false);
+            if (q[0] == 0 && q[1] == 0) break;
+        } else {
+            q++;
+        }
+    }
+    return kOk;
+}
+
 /* qsort C-string comparison function */
 static int cstring_cmp(const void *a, const void *b)  {
     const char **ia = (const char **)a;
@@ -337,8 +376,30 @@ static MmResult cmd_list_default(const char *p) {
         for (size_t i = 0; i < strlen(line_buffer); i++) {
             if (line_buffer[i] == TAB) line_buffer[i] = ' ';
         }
-        display_puts(line_buffer);
-        list_count += strlen(line_buffer) / width;
+        if (mmb_options.continuation_lines && (int) strlen(line_buffer) > width && width > 4) {
+            // As on the PicoMite: a long line is split at a space or comma
+            // into pieces that end with " _".
+            const char *s = line_buffer;
+            int len = strlen(s);
+            const int n = width - 2;
+            while (len > n) {
+                int split = n - 1;
+                while (split > 0 && s[split] != ' ' && s[split] != ',') split--;
+                if (split == 0) split = n - 1;
+                char piece[STRINGSIZE];
+                memcpy(piece, s, split + 1);
+                piece[split + 1] = '\0';
+                display_puts(piece);
+                display_puts(" _");
+                ListNewLine(&list_count, all);
+                s += split + 1;
+                len -= split + 1;
+            }
+            display_puts(s);
+        } else {
+            display_puts(line_buffer);
+            list_count += strlen(line_buffer) / width;
+        }
         ListNewLine(&list_count, all);
     }
 
@@ -371,6 +432,8 @@ void cmd_list(void) {
     } else if ((p = checkstring(cmdline, "GRAPHICS"))) {
         // LIST GRAPHICS
         result = cmd_graphics_list(p);
+    } else if ((p = checkstring(cmdline, "PROFILE"))) {
+        result = cmd_list_profile(p);
     } else if ((p = checkstring(cmdline, "OPTIONS"))) {
         // LIST OPTIONS
         cmd_option_list(p);

@@ -46,14 +46,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MMB4L_MATHS_H
 
 #include "../Configuration.h"
+#include "vartbl.h"
 
 // General definitions used by other modules
 extern void Q_Mult(MMFLOAT *q1, MMFLOAT *q2, MMFLOAT *n);
 extern void Q_Invert(MMFLOAT *q, MMFLOAT *n);
 extern void cmd_SensorFusion(char *passcmdline);
-extern int parsenumberarray(const char *tp, MMFLOAT **a1float, int64_t **a1int, int argno, short dimensions, short *dims, bool ConstantNotAllowed);
-extern int parsefloatrarray(const char *tp, MMFLOAT **a1float, int argno, int dimensions, short *dims, bool ConstantNotAllowed);
-extern int parseintegerarray(const char *tp, int64_t **a1int, int argno, int dimensions, short *dims, bool ConstantNotAllowed);
+extern int parsenumberarray(const char *tp, MMFLOAT **a1float, int64_t **a1int, int argno, short dimensions, DIMTYPE *dims, bool ConstantNotAllowed);
+extern int parsefloatrarray(const char *tp, MMFLOAT **a1float, int argno, int dimensions, DIMTYPE *dims, bool ConstantNotAllowed);
+// Base64, for MATH(BASE64) and LONGSTRING BASE64.
+unsigned b64e_size(unsigned in_size);
+unsigned b64d_size(unsigned in_size);
+unsigned b64_encode(const unsigned char *in, unsigned in_len, unsigned char *out);
+unsigned b64_decode(const unsigned char *in, unsigned in_len, unsigned char *out);
+
+extern int parseintegerarray(const char *tp, int64_t **a1int, int argno, int dimensions, DIMTYPE *dims, bool ConstantNotAllowed);
+// AES128, for MATH AES128 and LONGSTRING AES128.
+void aes_random_iv(uint8_t *iv);
+void aes_get16(const char *arg, uint8_t *out, const char *size_error);
 extern int parseany(const char *tp, MMFLOAT **a1float, int64_t **a1int, char ** a1str, int *length, bool stringarray);
 void MahonyQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MMFLOAT gy, MMFLOAT gz, MMFLOAT mx, MMFLOAT my, MMFLOAT mz, MMFLOAT Ki, MMFLOAT Kp, MMFLOAT deltat, MMFLOAT *yaw, MMFLOAT *pitch, MMFLOAT *roll);
 void MadgwickQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MMFLOAT gy, MMFLOAT gz, MMFLOAT mx, MMFLOAT my, MMFLOAT mz, MMFLOAT beta, MMFLOAT deltat, MMFLOAT *pitch, MMFLOAT *yaw, MMFLOAT *roll);

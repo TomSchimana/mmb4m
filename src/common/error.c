@@ -160,6 +160,7 @@ static void verror(MmResult error, const char *msg, va_list argp) {
         error_get_line_and_file(&mmb_error_state_ptr->line, mmb_error_state_ptr->file);
     }
     mmb_error_state_ptr->override_line = false;
+    mmb_error_state_ptr->last_line = mmb_error_state_ptr->line > 0 ? mmb_error_state_ptr->line : 0;
 
     char buf[STRINGSIZE * 2];
 

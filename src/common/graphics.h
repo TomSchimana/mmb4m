@@ -66,7 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GRAPHICS_SURFACE_F       2
 #define GRAPHICS_SURFACE_L       3
 #define GRAPHICS_SURFACE_F2      4
-#define GRAPHICS_MAX_LAYER       4
+#define GRAPHICS_MAX_LAYER       10
 #define GRAPHICS_MAX_COLLISIONS  4
 #define MIN_CMM2_MODE            1
 #define MAX_CMM2_MODE            17
@@ -191,6 +191,7 @@ extern uint32_t graphics_font;
 
 /** The current graphics mode, for CMM2, PicoMiteVGA and MMB4W. */
 extern unsigned graphics_mode;
+extern unsigned graphics_colour_depth;
 
 /** Initialises 'graphics' module. */
 MmResult graphics_init();

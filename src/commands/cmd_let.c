@@ -49,6 +49,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // because the LET is implied (ie, line does not have a recognisable command)
 // it ends up as the place where mistyped commands are discovered.  This is why
 // the error message is "Unknown command"
+/** Is p to end, less trailing spaces, a name with empty brackets, as in a%() ? */
+static bool let_is_whole_array(const char *p, const char *end) {
+    while (end > p && end[-1] == ' ') end--;
+    return end - p >= 3 && end[-1] == ')' && end[-2] == '(';
+}
+
+/** The start and bytes of the whole array named at p, a%(), after checking it is one. */
+static char *let_whole_array(const char *p, int *type, int *size, int64_t *bytes) {
+    char *base = findvar(p, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+    if (vartbl[VarIndex].dims[0] <= 0 || base != vartbl[VarIndex].val.s) ERROR_SYNTAX;
+    *type = vartbl[VarIndex].type & (T_INT | T_NBR | T_STR);
+    *size = vartbl[VarIndex].size;
+    int64_t n = 1;
+    for (int i = 0; i < MAXDIM && vartbl[VarIndex].dims[i] != 0; i++) {
+        n *= vartbl[VarIndex].dims[i] + 1 - mmb_options.base;
+    }
+    *bytes = n * ((*type & T_STR) ? *size + 1 : 8);
+    return base;
+}
+
+/**
+ * b%() = a%(), as on the PicoMite: the whole array copied, both of one type
+ * (strings of one maximum length) and with as many elements, whatever the
+ * dimensions.
+ */
+static void let_array(const char *lhs, const char *rhs) {
+    skipspace(rhs);
+    const char *end = rhs;
+    while (*end && *end != '\'') end++;
+    if (!let_is_whole_array(rhs, end)) ERROR_SYNTAX;
+    int dtype, dsize, stype, ssize;
+    int64_t dbytes, sbytes;
+    char *dst = let_whole_array(lhs, &dtype, &dsize, &dbytes);
+    if (vartbl[VarIndex].type & T_CONST) error_throw_legacy("Cannot change a constant");
+    const char *src = let_whole_array(rhs, &stype, &ssize, &sbytes);
+    if (dtype != stype || ((dtype & T_STR) && dsize != ssize)) error_throw_legacy("Arrays must be the same type");
+    if (dbytes != sbytes) error_throw_legacy("Array size mismatch");
+    memmove(dst, src, dbytes);
+}
+
 void cmd_let(void) {
     int t = 0x0;
     MMFLOAT f = 0.0;
@@ -67,6 +107,11 @@ void cmd_let(void) {
     const char *p2 = skipvar(cmdline, false);
     skipspace(p2);
     if (p1 != p2) ERROR_SYNTAX;
+
+    if (let_is_whole_array(cmdline, p1)) {
+        let_array(cmdline, p1 + tokensize(tokenEQUAL));
+        return;
+    }
 
     // create the variable and get the length if it is a string
     char *pvar = findvar(cmdline, V_FIND);

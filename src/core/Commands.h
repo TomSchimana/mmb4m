@@ -70,6 +70,7 @@ struct s_dostack {
     const char *loopptr;                    // pointer to the loop statement
     const char *doptr;                      // pointer to the DO statement
     char level;                             // the sub/function level that the loop was created
+    bool untiltest;                         // DO UNTIL: loop while the expression is false
 };
 
 extern struct s_dostack dostack[MAXDOLOOPS];

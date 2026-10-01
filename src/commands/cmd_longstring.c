@@ -44,8 +44,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/error.h"
 #include "../common/mmb4l.h"
+#include "../core/maths.h"
 #include "../common/parse.h"
 #include "../common/streamio.h"
+#include "../third_party/aes.h"
 
 static void longstring_append(const char *tp) {
     void *ptr1 = NULL;
@@ -460,9 +462,89 @@ void longstring_ucase(const char *tp) {
     }
 }
 
+/**
+ * LONGSTRING AES128 ENCRYPT|DECRYPT CBC|ECB|CTR key, in%(), out%() [, iv],
+ * as on the PicoMite V6.04.00RC2.
+ */
+static void cmd_longstring_aes128(const char *tp) {
+    const char *q, *p;
+    const bool encrypt = (q = checkstring(tp, "ENCRYPT")) != NULL;
+    if (!encrypt && !(q = checkstring(tp, "DECRYPT"))) ERROR_SYNTAX;
+    const bool ecb = (p = checkstring(q, "ECB")) != NULL;
+    const bool cbc = !ecb && (p = checkstring(q, "CBC")) != NULL;
+    if (!ecb && !cbc && !(p = checkstring(q, "CTR"))) ERROR_SYNTAX;
+    // Encrypting in CBC or CTR puts the initialisation vector in front of the output,
+    // decrypting takes it from the front of the input.
+    const int ivadd = ecb ? 0 : encrypt ? 16 : -16;
+    uint8_t key[16], iv[16];
+    getargs(&p, 7, DELIM_COMMA);
+    if (ivadd == 16 ? argc < 5 : argc != 5) ERROR_SYNTAX;
+    aes_get16(argv[0], key, "Key must be 16 elements long");
+    if (ivadd == 16) {
+        if (argc == 7) aes_get16(argv[6], iv, "Initialisation vector must be 16 elements long");
+        else aes_random_iv(iv);
+    }
+    int64_t *src = NULL, *dest = NULL;
+    parseintegerarray(argv[2], &src, 2, 1, NULL, false);
+    if (src[0] % 16) error_throw_ex(kError, "input must be multiple of 16 elements long");
+    if (src[0] < -ivadd) error_throw_ex(kError, "input must be at least 16 elements long");
+    const int card3 = parseintegerarray(argv[4], &dest, 3, 1, NULL, false);
+    if ((card3 - 1) * 8 < src[0] + ivadd) error_throw_ex(kError, "Output array too small");
+    const char *in = (const char *) &src[1];
+    char *out = (char *) &dest[1];
+
+    struct AES_ctx ctx;
+    if (ecb) {
+        struct AES_ctx ctxcopy;
+        dest[0] = src[0];
+        memcpy(out, in, src[0]);
+        AES_init_ctx(&ctxcopy, key);
+        for (int i = 0; i < src[0]; i += 16) {
+            memcpy(&ctx, &ctxcopy, sizeof(ctx));
+            if (encrypt) AES_ECB_encrypt(&ctx, (uint8_t *) &out[i]);
+            else AES_ECB_decrypt(&ctx, (uint8_t *) &out[i]);
+        }
+    } else if (encrypt) {
+        dest[0] = src[0] + 16;
+        memcpy(&out[16], in, src[0]);
+        memcpy(out, iv, 16);
+        AES_init_ctx_iv(&ctx, key, iv);
+        if (cbc) AES_CBC_encrypt_buffer(&ctx, (uint8_t *) &out[16], src[0]);
+        else AES_CTR_xcrypt_buffer(&ctx, (uint8_t *) &out[16], src[0]);
+    } else {
+        dest[0] = src[0] - 16;
+        memcpy(iv, in, 16);  // restore the IV
+        memcpy(out, &in[16], dest[0]);
+        AES_init_ctx_iv(&ctx, key, iv);
+        if (cbc) AES_CBC_decrypt_buffer(&ctx, (uint8_t *) out, dest[0]);
+        else AES_CTR_xcrypt_buffer(&ctx, (uint8_t *) out, dest[0]);
+    }
+}
+
+/** LONGSTRING BASE64 ENCODE|DECODE in%(), out%(), as on the PicoMite V6.04.00RC2. */
+static void cmd_longstring_base64(const char *p) {
+    const char *q;
+    const bool encode = (q = checkstring(p, "ENCODE")) != NULL;
+    if (!encode && !(q = checkstring(p, "DECODE"))) ERROR_SYNTAX;
+    getargs(&q, 3, DELIM_COMMA);
+    if (argc != 3) ERROR_ARGUMENT_COUNT;
+    int64_t *dest = NULL, *src = NULL;
+    const int capacity = (parseintegerarray(argv[2], &dest, 2, 1, NULL, true) - 1) * 8;
+    parseintegerarray(argv[0], &src, 1, 1, NULL, false);
+    const unsigned need = encode ? b64e_size(src[0]) : b64d_size(src[0]);
+    if ((unsigned) capacity < need) error_throw_ex(kError, "Array too small");
+    const unsigned char *in = (const unsigned char *) &src[1];
+    unsigned char *out = (unsigned char *) &dest[1];
+    dest[0] = encode ? b64_encode(in, src[0], out) : b64_decode(in, src[0], out);
+}
+
 void cmd_longstring(void) {
     const char *p;
-    if ((p = checkstring(cmdline, "APPEND"))) {
+    if ((p = checkstring(cmdline, "AES128"))) {
+        cmd_longstring_aes128(p);
+    } else if ((p = checkstring(cmdline, "BASE64"))) {
+        cmd_longstring_base64(p);
+    } else if ((p = checkstring(cmdline, "APPEND"))) {
         longstring_append(p);
     } else if ((p = checkstring(cmdline, "CLEAR"))) {
         longstring_clear(p);

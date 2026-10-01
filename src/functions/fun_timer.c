@@ -45,7 +45,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/mmb4l.h"
 #include "../common/mmtime.h"
 
+/** TIMER: milliseconds as a float, to the microsecond, as on the PicoMite. */
 void fun_timer(void) {
-    g_rtn_type = T_INT;
-    g_integer_rtn = NANOSECONDS_TO_MILLISECONDS(mmtime_get_timer_ns());
+    g_rtn_type = T_NBR;
+    g_float_rtn = (MMFLOAT) (mmtime_get_timer_ns() / 1000) / 1000.0;
 }

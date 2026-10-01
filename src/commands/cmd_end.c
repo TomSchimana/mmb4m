@@ -45,8 +45,43 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/mmb4l.h"
 #include "../common/exit_codes.h"
 
+#include <string.h>
+
+/** The command END "cmd$" leaves for the prompt; main() runs it once the program has ended. */
+char mmb_end_command[STRINGSIZE] = { 0 };
+
+/**
+ * END [exitcode | cmd$ | NOEND]
+ *
+ * As on the PicoMite, a SUB MM.END runs first unless NOEND is given; without
+ * one, END cmd$ leaves cmd$ to be run at the prompt after the program. An
+ * exit code is MMB4L's own and holds either way.
+ */
 void cmd_end(void) {
+    static bool in_mm_end = false;
     getargs(&cmdline, 1, DELIM_COMMA);
-    mmb_state.exit_code = (argc == 1) ? getint(argv[0], 0, 255) : EX_OK;
+    const bool noend = (argc == 1) && checkstring(argv[0], "NOEND");
+    mmb_state.exit_code = EX_OK;
+    mmb_end_command[0] = '\0';
+    if (mmb_profiling && CurrentLinePtr) profile_report();
+    if (argc == 1 && !noend) {
+        MMFLOAT f = 0.0;
+        MMINTEGER i = 0;
+        char *s = NULL;
+        int t = T_NOTYPE;
+        evaluate(argv[0], &f, &i, &s, &t, false);
+        if (t & T_STR) {
+            memcpy(mmb_end_command, s + 1, (unsigned char) s[0]);
+            mmb_end_command[(unsigned char) s[0]] = '\0';
+        } else {
+            mmb_state.exit_code = getint(argv[0], 0, 255);
+        }
+    }
+    if (!noend && !in_mm_end && FindSubFun("MM.END", kSub) >= 0) {
+        mmb_end_command[0] = '\0';  // as on the PicoMite, MM.END takes the place of cmd$
+        in_mm_end = true;
+        ExecuteProgram("MM.END\0");
+    }
+    in_mm_end = false;
     longjmp(mark, JMP_END);
 }

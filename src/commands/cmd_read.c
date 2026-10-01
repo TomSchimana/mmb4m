@@ -146,9 +146,10 @@ search_again:
             if(vtype[vidx] & T_STR) {
                 char *p1, *p2;
                 if(*argv[NextData] == '"') {                               // if quoted string
-                    for(len = 0, p1 = vtbl[vidx], p2 = argv[NextData] + 1; *p2 && *p2 != '"'; len++, p1++, p2++) {
-                       *p1 = *p2;                                   // copy up to the quote
-                    }
+                    const char *end = argv[NextData] + 1;
+                    while (*end && *end != '"') end++;              // copy up to the quote,
+                    len = parse_string_constant(argv[NextData] + 1, end, vtbl[vidx]);  // escapes replaced
+                    p1 = vtbl[vidx] + len;
                 } else {                                            // else if not quoted
                     for(len = 0, p1 = vtbl[vidx], p2 = argv[NextData]; *p2 && *p2 != '\'' ; len++, p1++, p2++) {
                         if(*p2 < 0x20 || *p2 >= 0x7f) ERROR_INVALID_CHARACTER;

@@ -187,4 +187,10 @@ MmResult audio_play_wav(const char *filename, const char *interrupt);
  */
 MmResult audio_set_volume(uint8_t left, uint8_t right);
 
+/** What is playing, for MM.INFO(SOUND): "OFF", "TONE", "WAV", "PAUSED MP3" ... as on the PicoMite. */
+const char *audio_state_name(void);
+
+/** The file playing, for MM.INFO(TRACK), or "OFF". */
+const char *audio_track_name(void);
+
 #endif // #if !defined(MMBASIC_AUDIO_H)

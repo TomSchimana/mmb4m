@@ -160,6 +160,7 @@ OptionsDefinition options_definitions[] = {
     { "Case",        kOptionListCase,     kOptionTypeString,  true,  "Title",                   options_list_case_map },
     { "CodePage",    kOptionCodePage,     kOptionTypeString,  false, "None",                    codepage_name_to_ordinal_map },
     { "Console",     kOptionConsole,      kOptionTypeString,  false, "Serial",                  options_console_map },
+    { "Continuation Lines", kOptionContinuationLines, kOptionTypeBoolean, true, "Off",            NULL },
     { "Default",     kOptionDefaultType,  kOptionTypeString,  false, "Float",                   options_default_type_map },
 #if defined(__ANDROID__) || defined(_WIN32) || defined(__APPLE__)
     { "Editor",      kOptionEditor,       kOptionTypeString,  true,  "Internal",                options_editor_map },
@@ -608,6 +609,9 @@ MmResult options_get_integer_value(const Options *options, OptionsId id, MMINTEG
         case kOptionSyntaxHighlight:
             *ivalue = options->syntax_highlight;
             break;
+        case kOptionContinuationLines:
+            *ivalue = options->continuation_lines;
+            break;
         case kOptionTab:
             *ivalue = options->tab;
             break;
@@ -980,6 +984,15 @@ static MmResult options_set_tab(Options *options, int ivalue) {
     }
 }
 
+static MmResult options_set_continuation_lines(Options *options, int ivalue) {
+    if (ivalue == 0 || ivalue == 1) {
+        options->continuation_lines = ivalue;
+        return kOk;
+    } else {
+        return kInvalidValue;
+    }
+}
+
 static MmResult options_set_syntax_highlight(Options *options, int ivalue) {
     if (ivalue == 0 || ivalue == 1) {
         options->syntax_highlight = ivalue;
@@ -1011,6 +1024,7 @@ MmResult options_set_integer_value(Options *options, OptionsId id, MMINTEGER iva
         case kOptionBreakKey:  return options_set_break_key(options, ivalue);
         case kOptionTab:       return options_set_tab(options, ivalue);
         case kOptionSyntaxHighlight:  return options_set_syntax_highlight(options, ivalue);
+        case kOptionContinuationLines:  return options_set_continuation_lines(options, ivalue);
 
 #if defined(OPTION_TESTS)
         case kOptionZBoolean:

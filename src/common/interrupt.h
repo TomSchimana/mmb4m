@@ -69,6 +69,21 @@ typedef struct {
   bool fired;
 } Interrupt;
 
+/** Number of MATH PID channels, as on the PicoMite. */
+#define MAX_PID_CHANNELS  8
+
+/**
+ * Sets up MATH PID channel 1..MAX_PID_CHANNELS to call interrupt_addr every
+ * period_ns once started; a NULL interrupt_addr removes the channel.
+ */
+void interrupt_set_pid(int channel, const char *interrupt_addr, int64_t period_ns);
+
+/** Starts a channel set up by interrupt_set_pid(); kError if it was not. */
+MmResult interrupt_start_pid(int channel);
+
+/** Is the MATH PID channel running ? */
+bool interrupt_pid_active(int channel);
+
 /** Initialises interrupts. */
 MmResult interrupt_init(void);
 

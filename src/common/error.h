@@ -59,6 +59,7 @@ typedef struct {
    MmResult code;
    char file[STRINGSIZE];     // File that error was reported from.
    int line;                  // Line that error was reported from.
+   int last_line;             // Line of the last error, kept for MM.ERRLINE; 0 if none.
    char message[MAXERRMSG];
    int skip;                  // How to handle error.
                               //   0 = abort

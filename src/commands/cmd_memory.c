@@ -48,6 +48,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/mmb4l.h"
 #include "../common/display.h"
+#include "../common/parse.h"
+#include "../common/streamio.h"
 #include "../common/utility.h"
 #include "../core/vartbl.h"
 
@@ -108,6 +110,8 @@ static void memory_copy_word(const char *p) {
 }
 
 static void memory_copy(const char *p) {
+    char keyword[STRINGSIZE];
+    p = parse_keyword_from_function(p, keyword);
     const char *p2;
     if ((p2 = checkstring(p, "BYTE"))) {
         memory_copy_byte(p2);
@@ -175,6 +179,8 @@ static void memory_set_word(const char *p) {
 }
 
 static void memory_set(const char *p) {
+    char keyword[STRINGSIZE];
+    p = parse_keyword_from_function(p, keyword);
     const char *p2;
     if ((p2 = checkstring(p, "BYTE"))) {
         memory_set_byte(p2);
@@ -283,9 +289,124 @@ static void memory_report(const char *unused) {
     display_puts(inpbuf);
 }
 
+/**
+ * The memory MEMORY PRINT and MEMORY INPUT work on: an integer array given as
+ * a%(), whose size in bytes goes to *size, or an address, *size then -1.
+ */
+static char *memory_file_target(char *arg, int64_t *size) {
+    skipspace(arg);
+    const char *end = arg + strlen(arg);
+    while (end > arg && end[-1] == ' ') end--;
+    if (end - arg >= 2 && end[-1] == ')' && end[-2] == '(') {
+        char *a = findvar(arg, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+        if (!(vartbl[VarIndex].type & T_INT) || vartbl[VarIndex].dims[0] <= 0) {
+            error_throw_ex(kError, "Argument 3 must be an integer array");
+        }
+        int64_t n = 1;
+        for (int i = 0; i < MAXDIM && vartbl[VarIndex].dims[i] != 0; i++) {
+            n *= vartbl[VarIndex].dims[i] + 1 - mmb_options.base;
+        }
+        *size = n * 8;
+        return a;
+    }
+    *size = -1;
+    return (char *) get_poke_addr(arg);
+}
+
+/** MEMORY PRINT [#]fnbr, nbr, address%|a%() and MEMORY INPUT likewise, as on the PicoMite. */
+static void memory_file(const char *p, bool print) {
+    getargs(&p, 5, DELIM_COMMA);
+    if (argc != 5) ERROR_ARGUMENT_COUNT;
+    const int fnbr = parse_file_number(argv[0], false);
+    if (fnbr == -1) ON_FAILURE_ERROR(kFileInvalidFileNumber);
+    if (!streamio_is_file(fnbr)) error_throw_ex(kError, "File % not open", fnbr);
+    const MMINTEGER n = getinteger(argv[2]);
+    if (n < 0) error_throw_ex(kError, "Number out of bounds");
+    int64_t size;
+    char *mem = memory_file_target(argv[4], &size);
+    if (size >= 0 && size < n) error_throw_ex(kError, "Source array too small");
+    if (print) {
+        if (streamio_write(fnbr, mem, n) != (size_t) n) error_throw_ex(kError, "Write error");
+    } else {
+        if (streamio_read(fnbr, mem, n) != (size_t) n) error_throw_ex(kError, "End of file");
+    }
+}
+
+/**
+ * MEMORY PACK src%()|addr, dst%()|addr, number, size and MEMORY UNPACK
+ * likewise, as on the PicoMite: 'number' integers packed into or unpacked
+ * from values of 1, 4, 8, 16 or 32 bits.
+ */
+static void memory_pack(const char *p, bool pack) {
+    getargs(&p, 7, DELIM_COMMA);
+    if (argc != 7) ERROR_ARGUMENT_COUNT;
+    const MMINTEGER n = getinteger(argv[4]);
+    if (n <= 0) return;
+    const int size = getint(argv[6], 1, 32);
+    if (!(size == 1 || size == 4 || size == 8 || size == 16 || size == 32)) {
+        error_throw_ex(kError, "Invalid size");
+    }
+    int64_t src_bytes, dst_bytes;
+    char *src = memory_file_target(argv[0], &src_bytes);
+    char *dst = memory_file_target(argv[2], &dst_bytes);
+    // The unpacked side holds one 64-bit integer per value.
+    int64_t *wide = (int64_t *) (pack ? src : dst);
+    uint8_t *narrow = (uint8_t *) (pack ? dst : src);
+    const int64_t wide_bytes = pack ? src_bytes : dst_bytes;
+    const int64_t narrow_bytes = pack ? dst_bytes : src_bytes;
+    if (wide_bytes >= 0 && wide_bytes / 8 < n) {
+        error_throw_ex(kError, pack ? "Source array too small" : "Destination array too small");
+    }
+    if (narrow_bytes >= 0 && narrow_bytes * 8 / size < n) {
+        error_throw_ex(kError, pack ? "Destination array too small" : "Source array too small");
+    }
+    if ((uintptr_t) wide % 8) error_throw_ex(kError, "Address not divisible by 8");
+    if (size == 16 && (uintptr_t) narrow % 2) error_throw_ex(kError, "Address not divisible by 2");
+    if (size == 32 && (uintptr_t) narrow % 4) error_throw_ex(kError, "Address not divisible by 4");
+    for (MMINTEGER i = 0; i < n; i++) {
+        switch (size) {
+            case 1:
+                if (pack) {
+                    if (i % 8 == 0) narrow[i / 8] = 0;
+                    narrow[i / 8] |= (wide[i] & 1) << (i % 8);
+                } else {
+                    wide[i] = (narrow[i / 8] >> (i % 8)) & 1;
+                }
+                break;
+            case 4:
+                if (pack) {
+                    if (i % 2 == 0) narrow[i / 2] = wide[i] & 0xF;
+                    else narrow[i / 2] |= (wide[i] & 0xF) << 4;
+                } else {
+                    wide[i] = (i % 2 == 0) ? (narrow[i / 2] & 0xF) : (narrow[i / 2] >> 4);
+                }
+                break;
+            case 8:
+                if (pack) narrow[i] = (uint8_t) wide[i]; else wide[i] = narrow[i];
+                break;
+            case 16:
+                if (pack) ((uint16_t *) narrow)[i] = (uint16_t) wide[i];
+                else wide[i] = ((uint16_t *) narrow)[i];
+                break;
+            default:
+                if (pack) ((uint32_t *) narrow)[i] = (uint32_t) wide[i];
+                else wide[i] = ((uint32_t *) narrow)[i];
+                break;
+        }
+    }
+}
+
 void cmd_memory(void) {
     const char *p;
-    if ((p = checkstring(cmdline, "COPY"))) {
+    if ((p = checkstring(cmdline, "PACK"))) {
+        memory_pack(p, true);
+    } else if ((p = checkstring(cmdline, "UNPACK"))) {
+        memory_pack(p, false);
+    } else if ((p = checkstring(cmdline, "PRINT"))) {
+        memory_file(p, true);
+    } else if ((p = checkstring(cmdline, "INPUT"))) {
+        memory_file(p, false);
+    } else if ((p = checkstring(cmdline, "COPY"))) {
         memory_copy(p);
     } else if ((p = checkstring(cmdline, "SET"))) {
         memory_set(p);

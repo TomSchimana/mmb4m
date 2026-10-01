@@ -79,6 +79,9 @@ int64_t mmtime_now_ns();
 /** Gets the current value of the Timer in nanoseconds. */
 int64_t mmtime_get_timer_ns(void);
 
+/** Nanoseconds since MMBasic started. */
+int64_t mmtime_get_uptime_ns(void);
+
 /** Sets the Timer to the given value in nanoseconds. */
 void mmtime_set_timer_ns(int64_t timer_ns);
 

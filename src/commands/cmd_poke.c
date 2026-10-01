@@ -141,6 +141,8 @@ static void poke_word(int argc, char** argv, const char *p) {
 void cmd_poke(void) {
     getargs(&cmdline, 5, DELIM_COMMA);
 
+    char keyword[STRINGSIZE];
+    argv[0] = (char *) parse_keyword_from_function(argv[0], keyword);
     const char* p;
     if ((p = checkstring(argv[0], "BYTE"))) {
         poke_byte(argc, argv, p);

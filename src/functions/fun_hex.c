@@ -62,3 +62,17 @@ void DoHexOctBin(int base) {
 void fun_hex(void) {
     DoHexOctBin(16);
 }
+
+/** BASE$(base, n [, digits]): n in any base from 2 to 36, as on the PicoMite, CMM2 and MMB4W. */
+void fun_base(void) {
+    getargs(&ep, 5, DELIM_COMMA);
+    if (argc != 3 && argc != 5) ERROR_ARGUMENT_COUNT;
+    const int base = getint(argv[0], 2, 36);
+    const MMINTEGER n = getinteger(argv[2]);
+    const int digits = (argc == 5) ? getint(argv[4], 0, MAXSTRLEN) : 1;
+    g_string_rtn = GetTempStrMemory();
+    IntToStrPad(g_string_rtn, n, '0', digits, base);
+    CtoM(g_string_rtn);
+    g_rtn_type = T_STR;
+}
+

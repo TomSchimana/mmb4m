@@ -48,6 +48,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void fun_time(void) {
     targ = T_STR;
     sret = GetTempStrMemory();
-    mmtime_time_string(mmtime_now_ns(), true, sret);
+    const int64_t now = mmtime_now_ns();
+    mmtime_time_string(now, true, sret);
+    if (mmb_option_milliseconds) {                                  // as on the PicoMite and CMM2
+        snprintf(sret + strlen(sret), STRINGSIZE - strlen(sret), ".%03d", (int) ((now / 1000000) % 1000));
+    }
     CtoM(sret);
 }

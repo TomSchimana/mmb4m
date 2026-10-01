@@ -62,8 +62,16 @@ const char *DAYS_OF_WEEK[] = {
 
 int64_t mmtime_base_ns;
 
+/** When MMBasic started, for MM.INFO(UPTIME); TIMER = n does not move it. */
+static int64_t mmtime_start_ns;
+
+int64_t mmtime_get_uptime_ns(void) {
+    return mmtime_now_ns() - mmtime_start_ns;
+}
+
 MmResult mmtime_init(void) {
     mmtime_base_ns = mmtime_now_ns();
+    mmtime_start_ns = mmtime_base_ns;
     return kOk;
 }
 

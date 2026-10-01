@@ -740,7 +740,7 @@ MmResult parse_filename(const char *p, char *out, size_t out_sz) {
 }
 
 int parse_number_array(char *tp, MMFLOAT **a1float, MMINTEGER **a1int, int argno, int dimensions,
-                       short *dims, bool disallowConstant) {
+                       DIMTYPE *dims, bool disallowConstant) {
     void *ptr1 = findvar(tp, V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
 
     if ((vartbl[VarIndex].type & T_CONST) && disallowConstant) {
@@ -750,7 +750,7 @@ int parse_number_array(char *tp, MMFLOAT **a1float, MMINTEGER **a1int, int argno
     if (dims == NULL) dims = vartbl[VarIndex].dims;
 
     if (vartbl[VarIndex].type & (T_INT | T_NBR)) {
-        memcpy(dims, vartbl[VarIndex].dims, MAXDIM * sizeof(short));
+        memcpy(dims, vartbl[VarIndex].dims, MAXDIM * sizeof(DIMTYPE));
         if (vartbl[VarIndex].type & T_NBR) {
             *a1float = (MMFLOAT *) ptr1;
         } else {
@@ -784,3 +784,67 @@ int parse_number_array(char *tp, MMFLOAT **a1float, MMINTEGER **a1int, int argno
     }
     return card;
 }
+
+const char *parse_keyword_from_function(const char *p, char *buf) {
+    skipspace(p);
+    if ((unsigned char) *p < C_BASETOKEN) return p;
+    const FunctionToken tok = tokentbl_peek(p);
+    const char *name = tokenname(tok);
+    const size_t len = strlen(name);
+    if (len < 2 || name[len - 1] != '(') return p;
+    const char *rest = p + tokensize(tok);
+    if (len + strlen(rest) + 1 >= STRINGSIZE) return p;
+    memcpy(buf, name, len - 1);
+    buf[len - 1] = ' ';
+    buf[len] = '(';
+    strcpy(buf + len + 1, rest);
+    return buf;
+}
+
+/** OPTION ESCAPE: string constants take escape sequences; cleared by ClearRuntime(). */
+bool mmb_option_escape = false;
+
+/** OPTION MILLISECONDS: TIME$ gives HH:MM:SS.mmm; cleared by ClearRuntime(). */
+bool mmb_option_milliseconds = false;
+
+static int parse_hex_digit(char c) {
+    return (c >= 'a') ? c - 'a' + 10 : (c >= 'A') ? c - 'A' + 10 : c - '0';
+}
+
+int parse_string_constant(const char *p, const char *end, char *out) {
+    char *o = out;
+    if (!mmb_option_escape) {
+        while (p != end) *o++ = *p++;
+        return o - out;
+    }
+    static const char escape_chars[] = "\\abefnqrtv";
+    static const char escape_values[] = { '\\', '\a', '\b', '\x1b', '\f', '\n', '"', '\r', '\t', '\v' };
+    while (p != end) {
+        // As on the PicoMite, a backslash just before the closing quote is itself.
+        if (*p != '\\' || end <= p + 1) {
+            *o++ = *p++;
+            continue;
+        }
+        p++;
+        int c;
+        if (isdigit((unsigned char) p[0]) && end - p >= 3
+                && isdigit((unsigned char) p[1]) && isdigit((unsigned char) p[2])) {
+            c = (p[0] - '0') * 100 + (p[1] - '0') * 10 + (p[2] - '0');
+            p += 3;
+        } else if (*p == '&' && end - p >= 3
+                && isxdigit((unsigned char) p[1]) && isxdigit((unsigned char) p[2])) {
+            c = (parse_hex_digit(p[1]) << 4) | parse_hex_digit(p[2]);
+            p += 3;
+        } else {
+            const char *found = strchr(escape_chars, *p);
+            c = (found && *p) ? escape_values[found - escape_chars] : *p;
+            p++;
+        }
+        if (c == 0 || c > 255) {
+            error_throw_ex(kError, "Illegal escape sequence, use CHR$(0) for the Null character", "$");
+        }
+        *o++ = (char) c;
+    }
+    return o - out;
+}
+

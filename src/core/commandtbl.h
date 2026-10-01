@@ -69,9 +69,15 @@ struct s_tokentbl {      // structure of the command and token tables.
 #define commandname(i)  ((i < commandtbl_size - 1) ? commandtbl[i].name : "")
 
 void cmd_arc(void);
+void cmd_array_add(void);
+void cmd_array_insert(void);
+void cmd_array_set(void);
+void cmd_array_slice(void);
 void cmd_autosave(void);
+void cmd_bit(void);
 void cmd_blit(void);
 void cmd_box(void);
+void cmd_byte(void);
 void cmd_breakpoint(void);
 void cmd_call(void);
 void cmd_case(void);
@@ -103,7 +109,10 @@ void cmd_execute(void);
 void cmd_exitfor(void);
 void cmd_exit(void);
 void cmd_files(void);
+void cmd_flag(void);
+void cmd_flags(void);
 void cmd_flash(void);
+void cmd_flush(void);
 void cmd_font(void);
 void cmd_for(void);
 void cmd_framebuffer(void);
@@ -129,6 +138,7 @@ void cmd_longstring(void);
 void cmd_loop(void);
 void cmd_math(void);
 void cmd_memory(void);
+void cmd_lmid(void);
 void cmd_mid(void);
 void cmd_mkdir(void);
 void cmd_mkfile(void);
@@ -167,6 +177,7 @@ void cmd_setpin(void);
 void cmd_settick(void);
 void cmd_settitle(void);
 void cmd_sort(void);
+void cmd_sync(void);
 void cmd_sprite(void);
 void cmd_subfun(void);
 void cmd_system(void);
@@ -195,7 +206,7 @@ extern int commandtbl_size;
 
 // Store commonly used commands for faster token checking.
 extern CommandToken cmdCASE, cmdCASE_ELSE, cmdCFUN, cmdCSUB, cmdDATA, cmdDEFINEFONT, cmdDIM, cmdDO;
-extern CommandToken cmdELSE, cmdELSEIF, cmdELSE_IF, cmdENDIF, cmdEND_CSUB, cmdEND_DEFINEFONT;
+extern CommandToken cmdELSE, cmdELSEIF, cmdELSE_IF, cmdENDIF, cmdEND_CSUB, cmdEND_CFUNCTION, cmdEND_DEFINEFONT;
 extern CommandToken cmdEND_FUNCTION;
 extern CommandToken cmdENDIF, cmdEND_IF, cmdEND_SELECT, cmdEND_SUB, cmdFOR, cmdFUN;
 extern CommandToken cmdIF, cmdIRET, cmdLET, cmdLOCAL, cmdLOOP, cmdNEXT, cmdPRINT;

@@ -55,8 +55,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/streamio.h"
 #include "../common/utility.h"
 
-/** Reads input from the keyboard buffer into a buffer. */
-static int cmd_autosave_read(char *buf) {
+/** Reads input from the keyboard buffer into a buffer, echoing it unless told not to. */
+static int cmd_autosave_read(char *buf, bool echo) {
     int ch;
     int count = 0;
     char *p = buf;
@@ -90,14 +90,16 @@ static int cmd_autosave_read(char *buf) {
                 || (ch == '\n')) {
             *p++ = '\n';
             count = 0;
-            display_putc('\n');
+            if (echo) display_putc('\n');
         }
 
         if (isprint(ch)) {
             *p++ = ch;
             if (count++ > 240) ERROR_LINE_LENGTH;
-            display_putc(ch);
-            display_flush();
+            if (echo) {
+                display_putc(ch);
+                display_flush();
+            }
         }
 
         previous = ch;
@@ -129,9 +131,21 @@ static void cmd_autosave_write_file(char *filename, char *buf) {
 void cmd_autosave(void) {
     if (CurrentLinePtr) ERROR_INVALID_IN_PROGRAM;
 
+    // AUTOSAVE N file$, as on the CMM2 V6: the same without echoing the input.
+    const char *p = cmdline;
+    bool echo = true;
+    if (toupper(p[0]) == 'N' && p[1] == ' ') {
+        const char *q = p + 2;
+        skipspace(q);
+        if (*q) {
+            echo = false;
+            p = q;
+        }
+    }
+
     char filename[STRINGSIZE]; // Don't use GetTempStrMemory() because it will
                                // be cleared when we call ClearRuntime() later.
-    ON_FAILURE_ERROR(parse_filename(cmdline, filename, STRINGSIZE));
+    ON_FAILURE_ERROR(parse_filename(p, filename, STRINGSIZE));
     if (strlen(path_get_extension(filename)) == 0) {
         if (FAILED(cstring_cat(filename, ".bas", STRINGSIZE))) {
             ON_FAILURE_ERROR(kFilenameTooLong);
@@ -140,7 +154,7 @@ void cmd_autosave(void) {
 
     ON_FAILURE_ERROR(ClearRuntime());
     char *buf = GetTempMemory(EDIT_BUFFER_SIZE);
-    int exit_key = cmd_autosave_read(buf);
+    int exit_key = cmd_autosave_read(buf, echo);
     cmd_autosave_write_file(filename, buf);
 
     if (path_has_extension(filename, ".bas", true)) {

@@ -58,8 +58,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DELETED_HASH  -2
 
 // TODO: change to int16_t
-#define DIMTYPE       short int
-#define DIMTYPE_MAX   SHRT_MAX
+#define DIMTYPE       int
+#define DIMTYPE_MAX   INT_MAX
 
 typedef int16_t VarHashValue;
 

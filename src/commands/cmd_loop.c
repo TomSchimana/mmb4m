@@ -76,8 +76,9 @@ void cmd_loop(void) {
                     checkend(cmdline);                              // make sure that there is nothing else
                 }
             }
-            else {                                                  // if was DO WHILE
+            else {                                                  // if was DO WHILE or DO UNTIL
                 tst = (getnumber(dostack[i].evalptr) != 0);         // evaluate its expression
+                if (dostack[i].untiltest) tst = !tst;
                 checkend(cmdline);                                  // make sure that there is nothing else
             }
 

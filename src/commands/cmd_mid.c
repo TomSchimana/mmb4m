@@ -49,7 +49,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define ERROR_NOT_A_STRING              error_throw_ex(kError, "Expected a string")
 #define ERROR_SELECTION_EXCEEDS_LENGTH  error_throw_ex(kError, "Selection exceeds length of string")
-#define ERROR_STRING_TOO_SHORT          error_throw_ex(kError, "Supplied string too short")
 
 void cmd_mid(void) {
     // Left hand side of expression.
@@ -57,10 +56,11 @@ void cmd_mid(void) {
     findvar(argv[0], V_NOFIND_ERR);
     if (vartbl[VarIndex].type & T_CONST) ERROR_CANNOT_CHANGE_A_CONSTANT;
     if (!(vartbl[VarIndex].type & T_STR)) ERROR_NOT_A_STRING;
+    const int size = vartbl[VarIndex].size;
     char *sourcestring = getstring(argv[0]);
     const int start = getint(argv[2], 1, sourcestring[0]);
-    int num = (argc == 5) ? getint(argv[4], 1, sourcestring[0]) : 0;
-    if (start + num - 1 > sourcestring[0]) ERROR_SELECTION_EXCEEDS_LENGTH;
+    int num = (argc == 5) ? getint(argv[4], 0, sourcestring[0]) : -1;
+    if (start + (num < 0 ? 0 : num - 1) > sourcestring[0]) ERROR_SELECTION_EXCEEDS_LENGTH;
 
     // Find and consume '=' token.
     while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
@@ -68,8 +68,67 @@ void cmd_mid(void) {
     // Right hand side of expression.
     skipspace(cmdline);
     char *value = getstring(cmdline);
-    if (num == 0) num = value[0];
-    if (num > value[0]) ERROR_STRING_TOO_SHORT;
     char *p = &value[1];
-    memcpy(&sourcestring[start], p, num);
+    if (num == -1) {
+        // Without a length as many characters are replaced as the string
+        // holds from start on; its length stays.
+        num = value[0];
+        if (start + num - 1 > sourcestring[0]) num = sourcestring[0] - start + 1;
+        memcpy(&sourcestring[start], p, num);
+    } else if (num == value[0]) {
+        memcpy(&sourcestring[start], p, num);
+    } else {
+        // As on the PicoMite: the selection is replaced by all of value,
+        // and the string grows or shrinks by the difference.
+        const int change = value[0] - num;
+        if (sourcestring[0] + change > size) ERROR_STRING_TOO_LONG;
+        memmove(&sourcestring[start + value[0]], &sourcestring[start + num],
+                sourcestring[0] - (start + num - 1));
+        sourcestring[0] += change;
+        memcpy(&sourcestring[start], p, value[0]);
+    }
 }
+
+/**
+ * LMID(array%(), start [, num]) = s$: as MID$() = on a long string, as on the
+ * PicoMite. Unlike its code, only the characters after the selection move,
+ * so nothing is written past the long string's capacity.
+ */
+void cmd_lmid(void) {
+    getargs(&cmdline, 5, DELIM_COMMA);
+    if (argc != 3 && argc != 5) ERROR_ARGUMENT_COUNT;
+    void *ptr1 = findvar(argv[0], V_FIND | V_EMPTY_OK);
+    if (!(vartbl[VarIndex].type & T_INT)) ERROR_ARG_NOT_INTEGER_ARRAY(1);
+    if (vartbl[VarIndex].dims[1] != 0) ERROR_INVALID_VARIABLE;
+    if (vartbl[VarIndex].dims[0] <= 0) ERROR_ARG_NOT_INTEGER_ARRAY(1);
+    if (vartbl[VarIndex].type & T_CONST) ERROR_CANNOT_CHANGE_A_CONSTANT;
+    int64_t *dest = (int64_t *) ptr1;
+    char *ls = (char *) &dest[1];
+    const int capacity = (vartbl[VarIndex].dims[0] - mmb_options.base) * 8;
+    const int length = (int) dest[0];
+    const int start = getint(argv[2], 1, length) - 1;  // 0-based from here
+    int num = (argc == 5) ? getint(argv[4], 0, length) : -1;
+    if (num > 0 && start + num > length) ERROR_SELECTION_EXCEEDS_LENGTH;
+
+    // Find and consume '=' token.
+    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    skipspace(cmdline);
+    if (!*cmdline) ERROR_SYNTAX;
+    char *value = getstring(cmdline);
+    const int vlen = (unsigned char) value[0];
+
+    if (num == -1) {
+        num = vlen;
+        if (start + num > length) num = length - start;
+        memcpy(&ls[start], &value[1], num);
+    } else if (num == vlen) {
+        memcpy(&ls[start], &value[1], num);
+    } else {
+        const int change = vlen - num;
+        if (length + change > capacity) ERROR_STRING_TOO_LONG;
+        memmove(&ls[start + vlen], &ls[start + num], length - (start + num));
+        dest[0] += change;
+        memcpy(&ls[start], &value[1], vlen);
+    }
+}
+

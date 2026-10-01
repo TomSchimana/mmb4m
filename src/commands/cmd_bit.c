@@ -2,9 +2,10 @@
 
 MMBasic for Linux (MMB4L)
 
-cmd_close.c
+cmd_bit.c
 
 Copyright 2021-2025 Geoff Graham, Peter Mather and Thomas Hugo Williams.
+Copyright 2026 Thomas Schimana.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -44,27 +45,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/mmb4l.h"
 #include "../common/error.h"
-#include "../common/parse.h"
-#include "../common/streamio.h"
-#include "../common/utility.h"
+#include "../core/tokentbl.h"
 
-void cmd_close(void) {
-    getargs(&cmdline, (MAX_ARG_COUNT * 2) - 1, DELIM_COMMA);
-    if ((argc & 0x01) == 0) ON_FAILURE_ERROR(kArgumentCount);
+#define ERROR_NOT_AN_INTEGER  error_throw_ex(kError, "Not an integer")
 
-    for (int i = 0; i < argc; i += 2) {
-        int fnbr = parse_file_number(argv[i], false);
-        if (fnbr == -1) ON_FAILURE_ERROR(kFileInvalidFileNumber);
-        ON_FAILURE_ERROR(streamio_close(fnbr));
-    }
+/** BIT(var%, bit) = 0|1, as on the PicoMite. */
+void cmd_bit(void) {
+    getargs(&cmdline, 3, DELIM_COMMA);
+    if (argc != 3) ERROR_ARGUMENT_COUNT;
+    uint64_t *s = (uint64_t *) findvar(argv[0], V_NOFIND_ERR);
+    if (vartbl[VarIndex].type & T_CONST) ERROR_CANNOT_CHANGE_A_CONSTANT;
+    if (!(vartbl[VarIndex].type & T_INT)) ERROR_NOT_AN_INTEGER;
+    const uint64_t bit = (uint64_t) 1 << getint(argv[2], 0, 63);
+
+    // Find and consume '=' token.
+    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    skipspace(cmdline);
+    if (!*cmdline) ERROR_SYNTAX;
+    if (getint(cmdline, 0, 1)) *s |= bit; else *s &= ~bit;
 }
-
-/** FLUSH [#]fnbr: writes out what is buffered for file fnbr, as on the PicoMite. */
-void cmd_flush(void) {
-    getargs(&cmdline, 1, DELIM_COMMA);
-    if (argc != 1) ERROR_ARGUMENT_COUNT;
-    const int fnbr = parse_file_number(argv[0], false);
-    if (fnbr == -1) ON_FAILURE_ERROR(kFileInvalidFileNumber);
-    ON_FAILURE_ERROR(streamio_flush(fnbr));
-}
-

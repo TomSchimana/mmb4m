@@ -194,6 +194,21 @@ void erasearray(char *n);
 void ClearVars(int level);
 void ClearStack(void);
 MmResult ClearRuntime(void);
+extern uint64_t mmb_flags;  // FLAG(), FLAGS, MM.FLAGS
+extern char mmb_end_command[];  // END cmd$, run at the prompt
+extern bool mmb_option_escape;  // OPTION ESCAPE, MM.ESC
+extern bool mmb_option_milliseconds;  // OPTION MILLISECONDS: TIME$ as HH:MM:SS.mmm
+
+// OPTION PROFILING and LIST PROFILE
+extern bool mmb_profiling;
+MmResult profile_enable(bool on);
+void profile_reset(void);
+void profile_line(const char *p);
+void profile_command(CommandToken cmd);
+void profile_sub_enter(int index, int level);
+void profile_sub_leave(int level);
+void profile_report(void);
+bool profile_line_stats(const char *p, uint32_t *count, int64_t *ns);
 MmResult SwitchPlatform(OptionsSimulate platform);
 void *DoExpression(const char *p, int *t);
 const char *evaluate(const char *p, MMFLOAT *fa, MMINTEGER *ia, char **sa, int *ta, int noerror);
