@@ -115,7 +115,6 @@ void fun_dir(void) {
     static int file_type = -1;
     static char pp[32];
     getargs(&ep, 3, DELIM_COMMA);
-    g_rtn_type = T_STR;
 
     switch (argc) {
         case 0:
@@ -123,6 +122,7 @@ void fun_dir(void) {
                 g_string_rtn = GetTempStrMemory();
                 *g_string_rtn = '\0';
                 CtoM(g_string_rtn);
+                g_rtn_type = T_STR;
                 return;
             }
             break;
@@ -183,4 +183,5 @@ void fun_dir(void) {
     }
 
     CtoM(g_string_rtn);
+    g_rtn_type = T_STR;  // set last: a FUNCTION in the arguments sets it too
 }

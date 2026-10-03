@@ -74,7 +74,7 @@ void fun_epoch(void) {
     int h = atoi(argv[6]);
     int min = atoi(argv[8]);
     int s = atoi(argv[10]);
-    if (h < 0 || h > 23 || min < 0 || m > 59 || s < 0 || s > 59) ERROR_INVALID("time");
+    if (h < 0 || h > 23 || min < 0 || min > 59 || s < 0 || s > 59) ERROR_INVALID("time");
 
     struct tm tmbuf = { 0 };
     tmbuf.tm_year = y - 1900;

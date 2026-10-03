@@ -53,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // search through the line looking for the equals sign and step over it,
 // evaluate the rest of the command and save in the timer
 void cmd_timer(void) {
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
     if (!*cmdline) ERROR_SYNTAX;
 
     const int64_t msec = getinteger(cmdline);

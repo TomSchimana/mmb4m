@@ -241,6 +241,20 @@ static inline FunctionToken tokentbl_read(const char **p) {
 }
 
 /**
+ * As tokentbl_read(), but a string constant is stepped over whole and read as
+ * '"', so that its bytes of 0x80 and more, the UTF-8 of a letter such as an
+ * umlaut, are never taken for tokens.
+ */
+static inline FunctionToken tokentbl_read_text(const char **p) {
+    if (**p == '"') {
+        for ((*p)++; **p && **p != '"'; (*p)++) { }
+        if (**p) (*p)++;
+        return '"';
+    }
+    return tokentbl_read(p);
+}
+
+/**
  * Writes a FunctionToken to the program memory
  * and advances the pointer by the number of bytes written.
  *

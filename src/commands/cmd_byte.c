@@ -60,7 +60,7 @@ void cmd_byte(void) {
     const int pos = getint(argv[2], 1, s[0]);
 
     // Find and consume '=' token.
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
     skipspace(cmdline);
     if (!*cmdline) ERROR_SYNTAX;
     s[pos] = getint(cmdline, 0, 255);

@@ -71,7 +71,8 @@ loopback:
     } else {
         // if no variables specified search the for stack looking for an entry with the same program position as
         // this NEXT statement. This cheats by using the cmdline as an identifier and may not work inside an IF THEN ELSE
-        for(i = 0; i < forindex; i++) {
+        // Innermost first, as a recursive SUB has its caller's loop on the stack at the same position.
+        for(i = forindex - 1; i >= 0; i--) {
             p = forstack[i].nextptr + sizeof(CommandToken);
             skipspace(p);
             if(p == cmdline) goto breakout;

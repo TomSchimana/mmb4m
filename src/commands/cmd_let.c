@@ -98,7 +98,7 @@ void cmd_let(void) {
     const char *p1 = cmdline;
 
     // search through the line looking for the equals sign
-    while (*p1 && tokentbl_read(&p1) != tokenEQUAL) { }
+    while (*p1 && tokentbl_read_text(&p1) != tokenEQUAL) { }
     if(!*p1) error_throw_legacy("Unknown command");
 
     p1 -= tokensize(tokenEQUAL);

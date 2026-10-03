@@ -48,6 +48,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/utility.h"
 #include "../core/tokentbl.h"
 
+#include <sys/stat.h>
+
 void cmd_copy(void) {
     const DelimType delim[] = { tokenTO, 0 };
     getargs(&cmdline, 3, delim);
@@ -58,6 +60,14 @@ void cmd_copy(void) {
 
     char *dst_filename = GetTempStrMemory();
     ON_FAILURE_ERROR(parse_filename(argv[2], dst_filename, STRINGSIZE));
+
+    // Opening the destination with "w" empties it, so a copy onto the source
+    // itself, under any name or through a link, would leave an empty file.
+    struct stat src_stat, dst_stat;
+    if (stat(src_filename, &src_stat) == 0 && stat(dst_filename, &dst_stat) == 0
+            && src_stat.st_dev == dst_stat.st_dev && src_stat.st_ino == dst_stat.st_ino) {
+        error_throw_ex(kError, "Source and destination are the same");
+    }
 
     const int src_fnbr = streamio_find_free();
     ON_FAILURE_ERROR(streamio_open(src_filename, "r", src_fnbr));

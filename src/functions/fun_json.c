@@ -53,10 +53,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define REPORT_NULL_FLAG  0x01
 #define REPORT_MISSING_FLAG  0x02
 
-static void fun_json_internal(void *varptr, char *key, int64_t flags) {
+static void fun_json_internal(void *varptr, int64_t capacity, char *key, int64_t flags) {
 
+    // A long string is a byte count in dest[0] and the bytes, not terminated,
+    // after it. cJSON_Parse() wants a terminated string, so copy exactly the
+    // count, at most what the array holds, and terminate it.
     int64_t *dest = (int64_t *) varptr;
-    char *json_string = (char *) &dest[1];
+    int64_t json_len = dest[0];
+    if (json_len < 0) json_len = 0;
+    if (json_len > capacity) json_len = capacity;
+    char *json_string = (char *) GetTempMemory(json_len + 1);
+    memcpy(json_string, &dest[1], json_len);
+    json_string[json_len] = '\0';
     cJSON *parse = cJSON_Parse(json_string);
     if (!parse) ERROR_INVALID("JSON data");
 
@@ -142,6 +150,7 @@ void fun_json(void) {
     if (!(vartbl[VarIndex].type & T_INT)) ERROR_ARG_NOT_INTEGER_ARRAY(1);
     if (vartbl[VarIndex].dims[1] != 0) ERROR_INVALID_VARIABLE;
     if (vartbl[VarIndex].dims[0] <= 0) ERROR_ARG_NOT_INTEGER_ARRAY(1);
+    const int64_t capacity = (int64_t) (vartbl[VarIndex].dims[0] - mmb_options.base) * 8;
 
     // Second argument is the key to lookup in the JSON.
     char *key = getCstring(argv[2]);
@@ -152,5 +161,5 @@ void fun_json(void) {
         flags = getint(argv[4], 0, 3);
     }
 
-    fun_json_internal(varptr, key, flags);
+    fun_json_internal(varptr, capacity, key, flags);
 }

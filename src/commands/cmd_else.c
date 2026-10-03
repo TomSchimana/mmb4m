@@ -59,7 +59,7 @@ void cmd_else(void) {
             // found a nested IF command, we now need to determine if it is a single or multiline IF
             // search for a THEN, then check if only white space follows.  If so, it is multiline.
             const char *tp = p + sizeof(CommandToken);
-            while (*tp && tokentbl_read(&tp) != tokenTHEN) { }      // step over the THEN
+            while (*tp && tokentbl_read_text(&tp) != tokenTHEN) { }      // step over the THEN
             skipspace(tp);
             if(*tp == 0 || *tp == '\'')                             // yes, only whitespace follows
                 i++;                                                // count it as a nested IF

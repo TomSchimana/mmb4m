@@ -71,7 +71,7 @@ char cmd_run_args[STRINGSIZE];
 static bool cmd_run_is_legacy_args(const char *filename, const char *run_args) {
     // Seach for subtract token.
     for (const char *p = run_args; *p; ) {
-        if (tokentbl_read(&p) == tokenSUBTRACT) return true;
+        if (tokentbl_read_text(&p) == tokenSUBTRACT) return true;
     }
 
     if (filename

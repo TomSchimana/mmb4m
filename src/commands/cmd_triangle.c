@@ -106,7 +106,7 @@ static void cmd_triangle_default(const char *p) {
     if (argc >= 13 && *argv[12]) {
         getargaddress(argv[12], &cptr, &cfptr, &nc);
         if (nc == 1) {
-            colour = getint(argv[10], RGB_BLACK, RGB_WHITE);
+            colour = getint(argv[12], RGB_BLACK, RGB_WHITE);
         } else if (nc > 1) {
             if (nc > 1 && nc < n) n = nc;  // adjust the dimensionality
             for (int i = 0; i < nc; i++) {

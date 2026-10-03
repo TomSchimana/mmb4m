@@ -126,7 +126,7 @@ retest_an_if:
                     execute_one_command(argv[2]);
                 } else {
                     // IF <condition> THEN <statement>
-                    for (p = cmdline; *p && tokentbl_read(&p) != tokenTHEN; ) { }
+                    for (p = cmdline; *p && tokentbl_read_text(&p) != tokenTHEN; ) { }
                     nextstmt = p;  // The statement after the THEN token.
                 }
             }
@@ -144,7 +144,7 @@ retest_an_if:
                         // found a nested IF command, we now need to determine if it is a single or multiline IF
                         // search for a THEN, then check if only white space follows.  If so, it is multiline.
                         tp = p + sizeof(CommandToken);
-                        while (*tp && tokentbl_read(&tp) != delim[0]) { }  // find and step over THEN
+                        while (*tp && tokentbl_read_text(&tp) != delim[0]) { }  // find and step over THEN
                         skipspace(tp);
                         if(*tp == 0 || *tp == '\'')                 // yes, only whitespace follows
                             i++;                                    // count it as a nested IF
@@ -201,14 +201,14 @@ retest_an_if:
                         // IMPORTANT! we cannot simply start from the beginning of the IF statement
                         // and look for the ELSE token because <statement1> might begin with a
                         // command that has a command token ID equal to the ELSE function token ID.
-                        for (p = cmdline; *p && (tokentbl_read(&p) != tokenTHEN); ) { }
+                        for (p = cmdline; *p && (tokentbl_read_text(&p) != tokenTHEN); ) { }
 
                         // Skip the command that <statement1> must start with.
                         skipspace(p);
                         p += sizeof(CommandToken);
 
                         // Find and read the ELSE function token.
-                        for (; *p && (tokentbl_read(&p) != tokenELSE); ) { }
+                        for (; *p && (tokentbl_read_text(&p) != tokenELSE); ) { }
 
                         nextstmt = p;  // The statement after the ELSE token.
                     }

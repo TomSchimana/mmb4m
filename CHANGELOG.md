@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.1, 2026-10-03
+
+Fixes defects that the PicoMite, the Colour Maximite 2 or MMBasic for Windows no longer have, and defects that only a Mac shows. Three of them ended the program (`LGETSTR$` past the end, `MATH C_DIV` by 0 on an Intel Mac, `MATH V_PRINT` of very large numbers), one emptied a file (`COPY` onto itself), and one changed the letters of a string when a program was loaded (`PRINT "Grüße"` printed `GrC<C e`).
+
+- `LGETSTR$` with a start beyond the end of the long string returns an empty string instead of crashing. From PicoMite V6.04.00RC2, commit ee680d4
+- `JSON$` reads only as far as the long string's length. From PicoMite V6.04.00RC2, commit ee680d4
+- `LONGSTRING TRIM` can remove the whole string, or nothing with a count of 0. From PicoMite V6.04.00RC2, commit ee680d4
+- `COPY` of a file onto itself, also under another spelling or through a link, raises `Source and destination are the same` and leaves the file alone. It emptied the file. From PicoMite V6.04.00RC2, commit ee680d4
+- Integer `^` takes at most 64 steps, where `1^1000000000000` ran for minutes. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH C_XOR` and `C_OR` on integer arrays compute XOR and OR instead of AND. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH SCALE` into an integer array rounds only the result of a fractional scale, so 0.5 halves the numbers. It rounded the scale first, so 0.5 left them unchanged. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH C_DIV` of integer arrays by 0 raises `Divide by zero`, as `\` does. On an Intel Mac it ended the program. Found in MMB4M 0.2.0
+- `MATH Q_CREATE` and `MATH SENSORFUSION` take and give angles in degrees under `OPTION ANGLE DEGREES`, and `MATH SENSORFUSION MADGWICK` no longer sticks at NaN at rest. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH(CRC12)` returns 12 bits. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH(CROSSING)` finds a crossing near the end of the array. From PicoMite V6.04.00RC2, commit ee680d4
+- `EPOCH()` refuses a minute of 60 or more with `Invalid time`. It rolled it over into the next hour. From PicoMite V6.04.00RC2, commit ee680d4
+- `STATIC` variables of different SUBs are kept apart, and apart from a global of the same name. `c` in `SUB ab` and `bc` in `SUB a` were one variable. `LIST VARIABLES` shows a static as the SUB's name, a dot and the variable's name, and lists a `LOCAL` of a recursion once for each level. From PicoMite V6.04.00RC2, commit ee680d4
+- `TAB(n)` puts the next character in column `n` instead of one column further, also after the tab of a comma and after a letter such as `é`. From PicoMite V6.04.00RC2, commit ee680d4, UTF-8 for the Mac
+- `INPUT` prints a prompt that is an expression, such as `"Name" + ":"`, as its value. From PicoMite V6.04.00RC2, commit ee680d4
+- `END` with a FUNCTION as its exit code runs the FUNCTION once. It ran twice since MMB4M 0.2.0
+- A `FOR` loop finds its own `NEXT` when an inner loop's variable contains its name, as `row` and `nrow` do, and `NEXT` without a variable in a recursive SUB steps the loop of the call it is in. From PicoMite V6.04.00RC2, commit ee680d4
+- An element of an array parameter, passed to a SUB that takes the other kind of number, arrives as that element instead of the array's first. From PicoMite V6.04.00RC2, commit ee680d4
+- A float becomes the nearest integer, half away from zero. Above 8388607 it was cut, so `a% = 10000000.6` gave 10000000. From PicoMite V6.04.00RC2, commit ee680d4
+- `TRIANGLE` with arrays takes a single colour. It stopped with `Dimensions`. From PicoMite V6.04.00RC2, commit ee680d4
+- `MATH V_PRINT` and the other `MATH` output no longer end the program on the smallest integer or a float of 1E16 or more. Found in MMB4M 0.2.0
+- `MATH PID INIT` refuses a `LOCAL` array with `Must be a global variable`. The controller kept writing to it after the SUB had returned. From PicoMite V7.0.00b4, commit 57b74f8
+- `DIR$()` with a FUNCTION in its argument works. It stopped with an internal fault. Found in MMB4M 0.2.0
+- A string constant or a quoted `DATA` item keeps letters such as `ä`, `é` or `ß` when a program is loaded, as a Mac editor saves them in UTF-8. `PRINT "äöü"` printed `C$C6C<`. Found in MMB4M 0.2.0
+
 ## 0.2.0, 2026-10-01
 
 MMB4M 0.2 adds many commands from the PicoMite V6.04 and raises most of its limits to those of MMBasic for Windows. Programs now have 128 MB for variables, arrays and strings instead of 1 MB, and an array can have more than 32767 elements per dimension. Memory is managed differently, so string handling and SUB calls stay fast when a program holds large arrays. New commands include `BIT()` and `BYTE()`, `DO UNTIL`, `TRIM$`, commands that work on whole arrays, AES encryption, base64, `SAVE DATA` and `LOAD DATA`, and PID controllers. `MID$` as a statement, `TIMER`, `END` and `BOUND` now work as on the PicoMite and so differently from 0.1. Calling a `CSUB` stops with a clear error message.

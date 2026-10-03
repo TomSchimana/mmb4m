@@ -50,7 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** FLAGS = n, as on the PicoMite. */
 void cmd_flags(void) {
     // Find and consume '=' token.
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
     skipspace(cmdline);
     if (!*cmdline) ERROR_SYNTAX;
     mmb_flags = (uint64_t) getinteger(cmdline);

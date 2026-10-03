@@ -129,10 +129,18 @@ void cmd_for(void) {
             const CommandToken cmd = commandtbl_decode(p);
             if (cmd == cmdFOR) t++;                                 // count the FOR
             if (cmd == cmdNEXT) {                                   // is it NEXT
-                xp = p + sizeof(CommandToken);                      // point to after the NEXT token
-                while(*xp && cstring_ncasecmp(xp, vname, vlen)) xp++;  // step through looking for our variable
-                if(*xp && !isnamechar(xp[vlen]))                    // is it terminated correctly?
-                    t = 0;                                          // yes, found the matching NEXT
+                // Scan the NEXT's whole argument list for our variable as a whole
+                // word, so that "row" does not match the tail of "nrow".
+                const char *xstart = p + sizeof(CommandToken);      // point to after the NEXT token
+                xp = xstart;
+                while(*xp) {
+                    if(cstring_ncasecmp(xp, vname, vlen) == 0
+                            && (xp == xstart || !isnamechar(xp[-1])) && !isnamechar(xp[vlen]))
+                        break;
+                    xp++;
+                }
+                if(*xp)
+                    t = 0;                                          // found the matching NEXT
                 else
                     t--;                                            // no luck, just decrement our stack counter
             }

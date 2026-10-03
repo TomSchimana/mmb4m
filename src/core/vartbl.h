@@ -67,6 +67,8 @@ struct s_vartbl {                                     // structure of the variab
     char name[MAXVARLEN];                             // variable's name
     char type;                                        // its type (T_NBR, T_INT or T_STR)
     char level;                                       // its subroutine or function level (used to track local variables)
+    int16_t owner;                                    // for the data of a STATIC, 1 + index in funtbl of its SUB or
+                                                      // FUNCTION, else 0; in what was padding
     DIMTYPE dims[MAXDIM];                             // the dimensions. it is an array if the first dimension is NOT zero
     uint8_t size;                                     // the number of chars to allocate for each element in a string array
     VarHashValue hash;                                // index into the hash table for the variable
@@ -107,6 +109,17 @@ extern VarHashValue vartbl_hashmap[VARS_HASHMAP_SIZE];
  * is found.
  */
 extern int vartbl_free_idx;
+
+/**
+ * @brief  The owner that vartbl_find() matches and vartbl_add() records.
+ *
+ * 0 for ordinary variables. STATIC sets it to its SUB's owner value for the
+ * findvar() that creates or finds the data, so the data is apart from every
+ * other variable of the same name and from the statics of other SUBs. findvar()
+ * takes it for that name only and resets it, so the names in the dimensions
+ * are looked up as usual. Reset to 0 when an error is raised.
+ */
+extern int16_t vartbl_owner;
 
 /**
  * @brief  Largest index into the variables table.

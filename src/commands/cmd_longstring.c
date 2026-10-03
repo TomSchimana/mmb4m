@@ -434,7 +434,7 @@ void longstring_trim(const char *tp) {
         dest = (int64_t *)ptr1;
         q = (char *)&dest[1];
     } else ERROR_ARG_NOT_INTEGER_ARRAY(1);
-    trim = getint(argv[2], 1, dest[0] - 1);
+    trim = getint(argv[2], 0, dest[0]);  // 0 trims nothing, the length trims all
     i = dest[0] - trim;
     p = q + trim;
     while (i--) *q++ = *p++;

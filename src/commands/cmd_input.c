@@ -67,9 +67,7 @@ void cmd_input(void) {
         // is the first argument a prompt?
         // if so, print it followed by an optional question mark
         if(argc >= 3 && *argv[0] == '"' && (*argv[1] == ',' || *argv[1] == ';')) {
-            *(argv[0] + strlen(argv[0]) - 1) = 0;
-            argv[0]++;
-            display_puts(argv[0]);
+            display_puts(getCstring(argv[0]));                      // the prompt is a string expression
             if(*argv[1] == ';') display_puts("? ");
             i = 2;
         } else {

@@ -825,12 +825,9 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
             if (args->convention[i] == kParamConventionByRef) error("BYREF requires same types: $", args->v1[i]);
             if((TypeMask(vartbl[VarIndex].type) & T_STR) || (TypeMask(args->type[i]) & T_STR))
                 error("Incompatible type: $", args->v1[i]);
-            // make this into an ordinary argument
-            if(vartbl[args->varIndex[i]].type & T_PTR) {
-                args->val[i].i = *vartbl[args->varIndex[i]].val.ia; // get the value if the supplied argument is a pointer
-            } else {
-                args->val[i].i = *(MMINTEGER *)args->val[i].s;      // get the value if the supplied argument is an ordinary variable
-            }
+            // make this into an ordinary argument; args->val[i].s already points
+            // to the data, an array's element or a pointer variable's target
+            args->val[i].i = *(MMINTEGER *)args->val[i].s;
             args->type[i] &= ~T_PTR;                                // and remove the pointer flag
         }
 
@@ -926,17 +923,25 @@ void DefinedSubFun(int isfun, const char *cmd, int index, MMFLOAT *fa, MMINTEGER
 // the result in tknbuf[] is terminated with MMFLOAT zero chars
 // if the arg console is true then do not add a line number
 
+// A comment's character as the tokeniser keeps it, in ASCII, as the bytes of
+// 0x80 and more are tokens in a tokenised line.
+static char tokenise_ascii(char c) {
+    c &= 0x7f;
+    return (c < ' ' || c == 0x7f) ? ' ' : c;
+}
+
 void tokenise(int console) {
     char *p, *op;
     int i;
     int firstnonwhite;
     int labelvalid;
 
-    // first, make sure that only printable characters are in the line
+    // first, make sure that only printable characters are in the line. A byte
+    // of 0x80 or more is kept for now, as in a string constant it is part of
+    // a UTF-8 character such as an umlaut.
     p = inpbuf;
     while(*p) {
-        *p = *p & 0x7f;
-        if(*p < ' ' || *p == 0x7f)  *p = ' ';
+        if((unsigned char) *p < ' ' || *p == 0x7f)  *p = ' ';
         p++;
     }
 
@@ -985,11 +990,11 @@ void tokenise(int console) {
             continue;
         }
 
-        // copy anything after a comment (')
+        // copy anything after a comment ('), as ASCII as before
         if(*p == '\'') {
             char t;
             do {
-                t = *p++;
+                t = tokenise_ascii(*p++);
                 *op++ = t;
             } while(*p);
             if (t == '\'') *op++ = 32;
@@ -1069,7 +1074,7 @@ void tokenise(int console) {
                 commandtbl_encode(&op, match_i);
                 p = match_p;                                        // step over the command in the source
                 if (match_i == cmdREM)                              // check if it is a REM command
-                    while(*p) *op++ = *p++;                         // and in that case just copy everything
+                    while(*p) *op++ = tokenise_ascii(*p++);         // and in that case just copy everything
                 else {
                     if(isalpha(*(p-1)) && *p == ' ')                // if the command is followed by a space
                         p++;                                        // skip over it (llist will restore the space)
@@ -1158,7 +1163,9 @@ void tokenise(int console) {
             }
         }
 
-        // something else, so just copy the one character
+        // something else, so just copy the one character; a byte of 0x80 or
+        // more outside a string would be read as a token
+        if((unsigned char) *p >= 0x80) error_throw_legacy("Invalid character: only a string may hold non-ASCII text");
         *op++ = *p++;
        labelvalid = false;                                          // we do not want any labels after this
        firstnonwhite = false;
@@ -1940,6 +1947,11 @@ routines for storing and manipulating variables
 //      for T_STR a block of memory of MAXSTRLEN size (or size determined by the LENGTH keyword) will be malloc'ed and the pointer stored in the variable slot.
 void *findvar(const char *p, int action) {
 
+    // The owner of a STATIC applies to its own name. The names in its
+    // dimensions and LENGTH are looked up as everywhere else.
+    const int16_t owner = vartbl_owner;
+    vartbl_owner = 0;
+
     // Get the name.
     char name[MAXVARLEN + 1] = {0};
     MmResult result = parse_name(&p, name);
@@ -2036,7 +2048,9 @@ void *findvar(const char *p, int action) {
     int var_idx = -1;
     {
         int global_idx = -1;
+        vartbl_owner = owner;
         result = vartbl_find(name, LocalIndex, &var_idx, &global_idx);
+        vartbl_owner = 0;
         switch (result) {
             case kOk:
                 break;
@@ -2197,7 +2211,7 @@ void *findvar(const char *p, int action) {
                         i--;
                         p++;
                     } else {
-                        const FunctionToken funtok = tokentbl_read(&p);
+                        const FunctionToken funtok = tokentbl_read_text(&p);  // a string's ( and ) do not count
                         if (tokentype(funtok) & T_FUN) i++;
                     }
                 } while (i);
@@ -2222,6 +2236,7 @@ void *findvar(const char *p, int action) {
     }
 
     if (dnbr == -1) dim[0] = -1;  // "empty" array for fun/sub parameters.
+    vartbl_owner = owner;
     result = vartbl_add(
             name,
             vtype | (action & (T_IMPLIED | T_CONST)),
@@ -2229,6 +2244,7 @@ void *findvar(const char *p, int action) {
             dnbr == 0 ? NULL : dim,
             (vtype & T_STR) ? slen : 0,
             &var_idx);
+    vartbl_owner = 0;
     VarIndex = var_idx;
     switch (result) {
         case kOk:
@@ -2706,10 +2722,9 @@ int32_t FloatToInt32(MMFLOAT x) {
 int64_t FloatToInt64(MMFLOAT x) {
     if (isnan(x) || x < -9223372036854775808.0 || x >= 9223372036854775808.0)
         error("Number too large");
-    if ((x < -FLOAT_ROUNDING_LIMIT) || (x > FLOAT_ROUNDING_LIMIT))
-        return (int64_t) x;
-    else
-        return x >= 0 ? (int64_t)(x + 0.5) : (int64_t)(x - 0.5);
+    // Rounded half away from zero at any size; round() is exact for every
+    // double, and from 2^52 on every double is a whole number already.
+    return (int64_t) round(x);
 }
 
 #else

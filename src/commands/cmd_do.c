@@ -115,7 +115,9 @@ void cmd_do(void) {
         // if this is a DO WHILE ... LOOP or DO UNTIL ... LOOP statement
         // search the LOOP statement for a WHILE or UNTIL token (p is pointing to the matching LOOP statement)
         p += sizeof(CommandToken);
-        while(*p && *p < 0x80) p++;
+        while(*p && (unsigned char) *p < 0x80 && *p != '\'') {    // to the first token, not one in a string
+            if (*p == '"') tokentbl_read_text(&p); else p++;
+        }
         const FunctionToken funtok = tokentbl_peek(p);
         if (funtok == tokenWHILE) {
             error_throw_ex(kSyntax, "LOOP has a WHILE test");

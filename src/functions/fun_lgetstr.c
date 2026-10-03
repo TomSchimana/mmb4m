@@ -66,6 +66,7 @@ void fun_lgetstr(void) {
     nbr = getinteger(argv[4]);
     if (nbr < 1 || nbr > MAXSTRLEN) ERROR_NUMBER_OUT_OF_BOUNDS;
     if (start + nbr > src[0]) nbr = src[0] - start + 1;
+    if (nbr < 0) nbr = 0;  // start is beyond the end of the long string: return an empty string
     sret = GetTempStrMemory();  // this will last for the life of the command
     s += (start - 1);
     p = sret + 1;

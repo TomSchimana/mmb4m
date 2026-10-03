@@ -407,12 +407,14 @@ void fun_tab(void) {
     char *p = sret;
     int x = -1, y = -1;
     ON_FAILURE_ERROR(display_get_cursor_pos(false, &x, &y));
-    if (x >= i) {
+    // x counts from 0 and the column asked for from 1, so the next character
+    // is printed in column x + 1.
+    if (x + 1 > i) {
         i--;
         *p++ = '\r';
         *p++ = '\n';
     } else {
-        i -= x;
+        i -= x + 1;
     }
     memset(p, ' ', i);
     p[i] = '\0';

@@ -133,6 +133,17 @@ const char *llist(char *b, const char *p) {
             continue;
         }
 
+        // a string constant is copied as it is, as a byte of 0x80 or more in it
+        // is a character and not a token
+        if(*p == '"') {
+            do {
+                *b++ = *p++;
+            } while(*p && *p != '"');
+            if(*p) *b++ = *p++;
+            firstnonwhite = false;
+            continue;
+        }
+
         // hey, an ordinary char, just copy it to the output
         if(*p) {
             *b = *p;                                                // place the char in the buffer

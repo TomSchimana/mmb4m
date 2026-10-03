@@ -53,6 +53,7 @@ bool vartbl_init_called = false;
 struct s_vartbl vartbl[MAXVARS];
 VarHashValue vartbl_hashmap[VARS_HASHMAP_SIZE];
 int vartbl_free_idx = 0;
+int16_t vartbl_owner = 0;
 int varcnt = 0;
 
 void vartbl_init() {
@@ -153,6 +154,7 @@ MmResult vartbl_add(
 
     vartbl[*var_idx].type = type;
     vartbl[*var_idx].level = level;
+    vartbl[*var_idx].owner = vartbl_owner;
     vartbl[*var_idx].size = slen;
 
     // Copy dimension data.
@@ -253,7 +255,8 @@ MmResult vartbl_find(
             // Compare 'name' with referenced 'vartbl' entry.
             // Both names should be in upper-case, but if they are MAXVARLEN
             // chars long then they are not NULL terminated.
-            if (strncmp(name, vartbl[*var_idx].name, MAXVARLEN) == 0) {
+            if (vartbl[*var_idx].owner == vartbl_owner
+                    && strncmp(name, vartbl[*var_idx].name, MAXVARLEN) == 0) {
                 if (vartbl[*var_idx].level == 0) *global_idx = *var_idx;
                 if (vartbl[*var_idx].level == level) {
                     result = kOk;

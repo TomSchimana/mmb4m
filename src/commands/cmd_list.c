@@ -249,6 +249,34 @@ static MmResult cmd_list_functions(const char *p) {
     return cmd_list_tokens("functions", tokentbl, secondary_functions);
 }
 
+// The name LIST VARIABLES shows. The data of a STATIC is shown as its SUB or
+// FUNCTION, a dot and the variable's name.
+static void list_variable_name(const struct s_vartbl *var, char *out, size_t out_sz) {
+    char name[MAXVARLEN + 1] = { 0 };
+    memcpy(name, var->name, MAXVARLEN);                             // not terminated at MAXVARLEN
+    out[0] = '\0';
+    if (var->owner > 0) {
+        char routine[MAXVARLEN + 1] = { 0 };
+        memcpy(routine, funtbl[var->owner - 1].name, MAXVARLEN);
+        cstring_cat(out, routine, out_sz);
+        cstring_cat(out, ".", out_sz);
+    }
+    cstring_cat(out, name, out_sz);
+}
+
+// Orders the variables by that name, then by level, then by slot, so that
+// equal names such as a local in each level of a recursion are all listed.
+static int list_variable_compare(const void *a, const void *b) {
+    const int ia = *(const int *) a, ib = *(const int *) b;
+    char na[2 * MAXVARLEN + 2], nb[2 * MAXVARLEN + 2];
+    list_variable_name(&vartbl[ia], na, sizeof(na));
+    list_variable_name(&vartbl[ib], nb, sizeof(nb));
+    const int c = strcmp(na, nb);
+    if (c != 0) return c;
+    if (vartbl[ia].level != vartbl[ib].level) return vartbl[ia].level - vartbl[ib].level;
+    return ia - ib;
+}
+
 /** LIST VARIABLES [ALL|GLOBAL|LOCAL|level%] */
 static MmResult cmd_list_variables(const char *p) {
     getargs(&p, 1, DELIM_COMMA);
@@ -265,45 +293,34 @@ static MmResult cmd_list_variables(const char *p) {
         }
     }
 
-    char name[MAXVARLEN + 2];
+    char name[2 * MAXVARLEN + 3];
     char type[15];
     char dimensions[STRINGSIZE];
-    char latest[MAXVARLEN + 2] = "";
-    int idx = -1;
+    static int order[MAXVARS];
+    int nbr = 0;
     int count = 0;
+
+    for (int i = 0; i < MAXVARS; ++i) {
+        if (!vartbl[i].type) continue;
+        if (level != -1 && level != vartbl[i].level) continue;
+        order[nbr++] = i;
+    }
+    qsort(order, nbr, sizeof(order[0]), list_variable_compare);
 
     display_puts("+------------------------------------------------------------------------------+\r\n");
     display_puts("| Name                              | Type          | Level | Dimensions       |\r\n");
     display_puts("| --------------------------------- | ------------- | ----- | ---------------- |\r\n");
-    for (;;) {
-        // Determine next variable in alphabetical order.
-        memset(name, 255, MAXVARLEN + 2);
-        idx = -1;
-        for (int i = 0; i < MAXVARS; ++i) {
-            const struct s_vartbl *var = &vartbl[i];
-            if (!var->type) continue;
-            if (level != -1 && level != var->level) continue;
-            if (memcmp(name, var->name, MAXVARLEN) > 0
-                    && memcmp(latest, var->name, MAXVARLEN) < 0) {
-                memset(name, 0, MAXVARLEN + 2);
-                memcpy(name, var->name, MAXVARLEN);
-                idx = i;
-            }
-        }
-
-        if (idx == -1) break; // Reached the end of the variables.
-
-        strcpy(latest, name);
-
-        const struct s_vartbl *var = &vartbl[idx];
+    for (int n = 0; n < nbr; ++n) {
+        const struct s_vartbl *var = &vartbl[order[n]];
+        list_variable_name(var, name, sizeof(name));
 
         // Add type extension to name.
         if (var->type & T_IMPLIED) {
-            cstring_cat(name, "*", MAXVARLEN + 2);
+            cstring_cat(name, "*", sizeof(name));
         } else {
-            if (var->type & T_INT) cstring_cat(name, "%", MAXVARLEN + 2);
-            if (var->type & T_STR) cstring_cat(name, "$", MAXVARLEN + 2);
-            if (var->type & T_NBR) cstring_cat(name, "!", MAXVARLEN + 2);
+            if (var->type & T_INT) cstring_cat(name, "%", sizeof(name));
+            if (var->type & T_STR) cstring_cat(name, "$", sizeof(name));
+            if (var->type & T_NBR) cstring_cat(name, "!", sizeof(name));
         }
 
         // Type.

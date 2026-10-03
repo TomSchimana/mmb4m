@@ -55,8 +55,9 @@ void fun_port(void) {
     getargs(&ep, GPIO_MAX_PIN_NUM * 4, DELIM_COMMA);
     if ((argc & 0b11) != 0b11) ERROR_ARGUMENT_COUNT;
 
-    iret = 0;
-    targ = T_INT;
+    // The bits are gathered in a local and the type set at the end: a FUNCTION
+    // in the arguments sets iret and targ too.
+    MMINTEGER bits = 0;
     MmResult result = kOk;
     for (int i = argc - 3; i >= 0 && SUCCEEDED(result); i -= 4) {
         uint8_t pin_num;
@@ -68,22 +69,24 @@ void fun_port(void) {
             uint8_t pin_gp = 0;
             result = gpio_translate_from_pin_num(pin_num, &pin_gp);
             for (uint8_t j = pin_gp + nbr - 1; j >= pin_gp && SUCCEEDED(result); --j) {
-                iret <<= 1;
+                bits <<= 1;
                 uint8_t value = 0x0;
                 result = gpio_translate_from_pin_gp(j, &pin_num);
                 if (SUCCEEDED(result)) result = gpio_get_pin_value(pin_num, &value);
-                iret |= value;
+                bits |= value;
             }
 
         } else {
             for (uint8_t j = pin_num + nbr - 1; j >= pin_num && SUCCEEDED(result); --j) {
-                iret <<= 1;
+                bits <<= 1;
                 uint8_t value = 0x0;
                 result = gpio_get_pin_value(j, &value);
-                iret |= value;
+                bits |= value;
             }
         }
     }
 
     if (FAILED(result)) error_throw(result);
+    iret = bits;
+    targ = T_INT;
 }

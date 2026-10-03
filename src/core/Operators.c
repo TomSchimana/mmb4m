@@ -80,7 +80,6 @@ void op_invalid(void) {
 
 
 void op_exp(void) {
-    long long int i;
     errno = 0;
     if(targ & T_NBR)
         fret = (MMFLOAT)pow(farg1, farg2);
@@ -88,8 +87,18 @@ void op_exp(void) {
         if(iarg2 < 0) {
             targ = T_NBR;
             fret = (MMFLOAT)pow((MMFLOAT)iarg1, (MMFLOAT)iarg2);
-        } else
-            for(iret = i = 1; i <= iarg2; i++) iret *= iarg1;
+        } else {
+            // By squaring, at most 64 steps; one multiplication per unit of the
+            // exponent took minutes for a large one. Unsigned, so the result
+            // wraps past 64 bits exactly as the repeated multiplication did.
+            uint64_t r = 1, b = (uint64_t) iarg1, e = (uint64_t) iarg2;
+            while(e) {
+                if(e & 1) r *= b;
+                b *= b;
+                e >>= 1;
+            }
+            iret = (MMINTEGER) r;
+        }
     }
     if(errno) error_throw_legacy("Overflow");
 }

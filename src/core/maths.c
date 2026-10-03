@@ -189,7 +189,7 @@ struct tagMTRand *g_myrand=NULL;
 #define TEMPERING_MASK_C	0xefc60000
 
 void PFlt(MMFLOAT flt){
-    char s[20];
+    char s[STRINGSIZE];  // a float of 1E16 or more needs more than 20
     FloatToStr(s, flt, 4,4, ' ');
     display_puts(s);
 }
@@ -202,7 +202,7 @@ void PRet(void){
 }
 
 void PInt(int64_t n) {
-    char s[20];
+    char s[STRINGSIZE];  // the smallest integer needs 21
     IntToStr(s, (int64_t)n, 10);
     display_puts(s);
 }
@@ -289,11 +289,13 @@ void MadgwickQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MM
             s3 = -_2q1 * (2.0 * q2q4 - _2q1q3 - ax) + _2q4 * (2.0 * q1q2 + _2q3q4 - ay) - 4.0 * q3 * (1.0 - 2.0 * q2q2 - 2.0 * q3q3 - az) + (-_4bx * q3 - _2bz * q1) * (_2bx * (0.5 - q3q3 - q4q4) + _2bz * (q2q4 - q1q3) - mx) + (_2bx * q2 + _2bz * q4) * (_2bx * (q2q3 - q1q4) + _2bz * (q1q2 + q3q4) - my) + (_2bx * q1 - _4bz * q3) * (_2bx * (q1q3 + q2q4) + _2bz * (0.5 - q2q2 - q3q3) - mz);
             s4 = _2q2 * (2.0 * q2q4 - _2q1q3 - ax) + _2q3 * (2.0 * q1q2 + _2q3q4 - ay) + (-_4bx * q4 + _2bz * q2) * (_2bx * (0.5 - q3q3 - q4q4) + _2bz * (q2q4 - q1q3) - mx) + (-_2bx * q1 + _2bz * q3) * (_2bx * (q2q3 - q1q4) + _2bz * (q1q2 + q3q4) - my) + _2bx * q2 * (_2bx * (q1q3 + q2q4) + _2bz * (0.5 - q2q2 - q3q3) - mz);
             norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4);    // normalise step magnitude
-            norm = 1.0/norm;
-            s1 *= norm;
-            s2 *= norm;
-            s3 *= norm;
-            s4 *= norm;
+            if (norm != 0.0) {  // 0 at rest: no correction, and 1/0 would make q[] NaN for good
+                norm = 1.0/norm;
+                s1 *= norm;
+                s2 *= norm;
+                s3 *= norm;
+                s4 *= norm;
+            }
 
             // Compute rate of change of quaternion
             qDot1 = 0.5 * (-q2 * gx - q3 * gy - q4 * gz) - beta * s1;
@@ -319,18 +321,18 @@ void MadgwickQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MM
             // roll (x-axis rotation)
             MMFLOAT t0 = +2.0 * (q1 * q2 + q3 * q4);
             MMFLOAT t1 = +1.0 - 2.0 * (q2 * q2 + ysqr);
-            *roll = atan2(t0, t1);
+            *roll = atan2(t0, t1) * ANGLE_CONVERSION;
 
             // pitch (y-axis rotation)
             MMFLOAT t2 = +2.0 * (q1 * q3 - q4 * q2);
             t2 = t2 > 1.0 ? 1.0 : t2;
             t2 = t2 < -1.0 ? -1.0 : t2;
-            *pitch = asin(t2);
+            *pitch = asin(t2) * ANGLE_CONVERSION;
 
             // yaw (z-axis rotation)
             MMFLOAT t3 = +2.0 * (q1 * q4 + q2 *q3);
             MMFLOAT t4 = +1.0 - 2.0 * (ysqr + q4 * q4);
-            *yaw = atan2(t3, t4);
+            *yaw = atan2(t3, t4) * ANGLE_CONVERSION;
 
 }
 void MahonyQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MMFLOAT gy, MMFLOAT gz, MMFLOAT mx, MMFLOAT my, MMFLOAT mz, MMFLOAT Ki, MMFLOAT Kp, MMFLOAT deltat, MMFLOAT *yaw, MMFLOAT *pitch, MMFLOAT *roll)        {
@@ -427,18 +429,18 @@ void MahonyQuaternionUpdate(MMFLOAT ax, MMFLOAT ay, MMFLOAT az, MMFLOAT gx, MMFL
             // roll (x-axis rotation)
             MMFLOAT t0 = +2.0 * (q1 * q2 + q3 * q4);
             MMFLOAT t1 = +1.0 - 2.0 * (q2 * q2 + ysqr);
-            *roll = atan2(t0, t1);
+            *roll = atan2(t0, t1) * ANGLE_CONVERSION;
 
             // pitch (y-axis rotation)
             MMFLOAT t2 = +2.0 * (q1 * q3 - q4 * q2);
             t2 = t2 > 1.0 ? 1.0 : t2;
             t2 = t2 < -1.0 ? -1.0 : t2;
-            *pitch = asin(t2);
+            *pitch = asin(t2) * ANGLE_CONVERSION;
 
             // yaw (z-axis rotation)
             MMFLOAT t3 = +2.0 * (q1 * q4 + q2 *q3);
             MMFLOAT t4 = +1.0 - 2.0 * (ysqr + q4 * q4);
-            *yaw = atan2(t3, t4);
+            *yaw = atan2(t3, t4) * ANGLE_CONVERSION;
         }
 
 inline static void m_seedRand(MTRand* rand, unsigned long seed) {
@@ -668,7 +670,7 @@ uint16_t crc12(const uint8_t *array, uint16_t length, const uint16_t polynome,
                const uint16_t startmask, const uint16_t endmask,
                const uint8_t reverseIn, const uint8_t reverseOut)
 {
-  uint16_t crc = startmask;
+  uint16_t crc = startmask & 0x0FFF;
   while (length--)
   {
     // if ((length & 0xFF) == 0) routinechecks();  // RTOS
@@ -687,12 +689,13 @@ uint16_t crc12(const uint8_t *array, uint16_t length, const uint16_t polynome,
       {
         crc <<= 1;
       }
+      crc &= 0x0FFF;  // the CRC register is only 12 bits wide
     }
   }
 
   if (reverseOut) crc = reverse12(crc);
   crc ^= endmask;
-  return crc;
+  return crc & 0x0FFF;
 }
 
 
@@ -1012,6 +1015,21 @@ typedef struct {
 
 static PidController *pid_channels[MAX_PID_CHANNELS + 1];
 
+// Whether the array whose data is at q1, found by the last parse, is a global
+// one, declared at level 0 or a parameter or STATIC pointing at a global's
+// data, as in PicoMite V7.0.00b4 (RequireGlobal).
+static bool pid_array_is_global(const MMFLOAT *q1) {
+    if (vartbl[VarIndex].level == 0) return true;
+    if (!(vartbl[VarIndex].type & T_PTR)) return false;
+    for (int i = 0; i < varcnt; i++) {
+        if (vartbl[i].type && vartbl[i].level == 0 && !(vartbl[i].type & T_PTR)
+                && vartbl[i].val.s == (const char *) q1) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static MMFLOAT pid_update(PidController *pid, MMFLOAT setpoint, MMFLOAT measurement) {
     const MMFLOAT error = setpoint - measurement;
     const MMFLOAT proportional = pid->Kp * error;
@@ -1050,6 +1068,9 @@ static void cmd_math_pid(const char *tp) {
         const int channel = getint(argv[0], 1, MAX_PID_CHANNELS);
         const int card = parsefloatrarray(argv[2], &q1, 2, 1, NULL, true);
         if (card != 14) error_throw_legacy("Argument 2 must be a 14 element floating point array");
+        // The controller keeps using the array after this statement, so it must
+        // outlive the SUB, and a LOCAL's memory is freed when the SUB returns.
+        if (!pid_array_is_global(q1)) error_throw_legacy("Must be a global variable");
         PidController *pid = (PidController *) q1;
         if (pid->T < 0.001) error_throw_legacy("Invalid update rate");
         pid_channels[channel] = pid;
@@ -1244,9 +1265,10 @@ void cmd_math(void){
 				} else if(a2float!=NULL && a1float==NULL){
 					for(i=0; i< card1;i++)(*a2float++) = ((t & T_INT) ? (MMFLOAT)i64 : f) * ((MMFLOAT)*a1int++);
 				} else if(a2float==NULL && a1float!=NULL){
-					for(i=0; i< card1;i++)(*a2int++) = FloatToInt64(((t & T_INT) ? i64 : FloatToInt64(f)) * (*a1float++));
+					// a float scale is not rounded first, only the product when it is stored
+					for(i=0; i< card1;i++)(*a2int++) = FloatToInt64(((t & T_INT) ? (MMFLOAT)i64 : f) * (*a1float++));
 				} else {
-					for(i=0; i< card1;i++)(*a2int++) = ((t & T_INT) ? i64 : FloatToInt64(f)) * (*a1int++);
+					for(i=0; i< card1;i++)(*a2int++) = (t & T_INT) ? i64 * (*a1int++) : FloatToInt64(f * (MMFLOAT)(*a1int++));
 				}
 			} else {
 				if(a2float!=NULL && a1float!=NULL){
@@ -1434,7 +1456,7 @@ void cmd_math(void){
 				}
 			} else {
 				while(card--){
-					*a3int++ = *a1int++ & *a2int++;
+					*a3int++ = *a1int++ ^ *a2int++;
 				}
 			}
 			return;
@@ -1450,7 +1472,7 @@ void cmd_math(void){
 				}
 			} else {
 				while(card--){
-					*a3int++ = *a1int++ & *a2int++;
+					*a3int++ = *a1int++ | *a2int++;
 				}
 			}
 			return;
@@ -1482,6 +1504,8 @@ void cmd_math(void){
 				}
 			} else {
 				while(card--){
+					// on an Intel Mac an integer division by 0 is a SIGFPE
+					if(*a2int == 0) error_throw_legacy("Divide by zero");
 					*a3int++ = *a1int++ / *a2int++;
 				}
 			}
@@ -1867,7 +1891,7 @@ void cmd_math(void){
 			card=parsefloatrarray(argv[8],&q,5,1, dims, true);
 			if(card!=5)error_throw_legacy("Argument 4 must be a 5 element floating point array");
 			MMFLOAT sineterm= sin(theta/2.0/ANGLE_CONVERSION);
-			q[0]=cos(theta/2.0);
+			q[0]=cos(theta/2.0/ANGLE_CONVERSION);  // OPTION ANGLE for both terms
 			q[1]=x* sineterm;
 			q[2]=y* sineterm;
 			q[3]=z* sineterm;
@@ -2583,57 +2607,13 @@ void fun_math(void){
 			if(argc==5) direction=getint(argv[4],-1,1);
 			if(direction==0)error_throw_legacy("Valid are -1 and 1");
 			arraylength=parsenumberarray(argv[0],&a1float,&a1int,1,1,dims, false);
-			for(int i=0;i<arraylength-3;i++){
-				if(a1float){
-					if(a1float[i]<crossing && a1float[i+2]>crossing && (a1float[i+1]>=a1float[i] && a1float[i+1]<=a1float[i+2]) && direction==1){
-						found=i+1;
-						break;
-					}
-					if(a1float[i]>crossing && a1float[i+2]<crossing && (a1float[i+1]<=a1float[i] && a1float[i+1]>=a1float[i+2]) && direction==-1){
-						found=i+1;
-						break;
-					}
-				} else {
-					if(a1int[i]<crossing && a1int[i+2]>crossing && (a1int[i+1]>=a1int[i] && a1int[i+1]<=a1int[i+2]) && direction==1){
-						found=i+1;
-						break;
-					}
-					if(a1int[i]>crossing && a1int[i+2]<crossing && (a1int[i+1]<=a1int[i] && a1int[i+1]>=a1int[i+2]) && direction==-1){
-						found=i+1;
-						break;
-					}
-				}
-			}
-			if(found==-1){ //try a slower moving slope
-				for(int i=0;i<arraylength-5;i++){
-					if(a1float){
-						if(a1float[i+1]<=crossing && a1float[i+3]>=crossing && (a1float[i+2]>=a1float[i+1] && a1float[i+2]<=a1float[i+3]) && direction==1){
-							if(a1float[i]<a1float[i+2] && a1float[i+4]>a1float[i+2]){
-								found=i+2;
-								break;
-							}
-						}
-						if(a1float[i+1]>=crossing && a1float[i+3]<=crossing && (a1float[i+2]<=a1float[i+1] && a1float[i+2]>=a1float[i+3]) && direction==-1){
-							if(a1float[i]>a1float[i+2] && a1float[i+4]<a1float[i+2]){
-								found=i+2;
-								break;
-							}
-						}
-					} else {
-						if(a1int[i+1]<=crossing && a1int[i+3]>=crossing && (a1int[i+2]>=a1int[i+1] && a1int[i+2]<=a1int[i+3]) && direction==1){
-							if(a1int[i]<a1int[i+2] && a1int[i+4]>a1int[i+2]){
-								found=i+2;
-								break;
-							}
-						}
-						if(a1int[i+1]>=crossing && a1int[i+3]<=crossing && (a1int[i+2]<=a1int[i+1] && a1int[i+2]>=a1int[i+3]) && direction==-1){
-							if(a1int[i]>a1int[i+2] && a1int[i+4]<a1int[i+2]){
-								found=i+2;
-								break;
-							}
-						}
-					}
-				}
+			// The first sample at or past the level whose predecessor is on the
+			// other side, as in PicoMite; the older pattern search stopped three
+			// and five samples before the end and missed a crossing there.
+			for(int i=1; i<arraylength && found==-1; i++){
+				MMFLOAT before = a1float ? a1float[i-1] : (MMFLOAT)a1int[i-1];
+				MMFLOAT here = a1float ? a1float[i] : (MMFLOAT)a1int[i];
+				if((direction==1 && before<crossing && here>=crossing) || (direction==-1 && before>crossing && here<=crossing)) found=i;
 			}
 			targ=T_INT;
 			iret=found;
@@ -3246,9 +3226,9 @@ void cmd_SensorFusion(char *passcmdline){
         ax=getnumber(argv[0]);
         ay=getnumber(argv[2]);
         az=getnumber(argv[4]);
-        gx=getnumber(argv[6]);
-        gy=getnumber(argv[8]);
-        gz=getnumber(argv[10]);
+        gx=getnumber(argv[6])/ANGLE_CONVERSION;  // the gyro in radians/s under any OPTION ANGLE
+        gy=getnumber(argv[8])/ANGLE_CONVERSION;
+        gz=getnumber(argv[10])/ANGLE_CONVERSION;
         mx=getnumber(argv[12]);
         my=getnumber(argv[14]);
         mz=getnumber(argv[16]);
@@ -3274,9 +3254,9 @@ void cmd_SensorFusion(char *passcmdline){
         ax=getnumber(argv[0]);
         ay=getnumber(argv[2]);
         az=getnumber(argv[4]);
-        gx=getnumber(argv[6]);
-        gy=getnumber(argv[8]);
-        gz=getnumber(argv[10]);
+        gx=getnumber(argv[6])/ANGLE_CONVERSION;  // the gyro in radians/s under any OPTION ANGLE
+        gy=getnumber(argv[8])/ANGLE_CONVERSION;
+        gz=getnumber(argv[10])/ANGLE_CONVERSION;
         mx=getnumber(argv[12]);
         my=getnumber(argv[14]);
         mz=getnumber(argv[16]);

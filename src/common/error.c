@@ -203,6 +203,8 @@ static void verror(MmResult error, const char *msg, va_list argp) {
         error_clear_callback();
     }
 
+    vartbl_owner = 0;  // an error inside STATIC must not leave its owner set
+
     if (mmb_error_state_ptr->skip) {
         *mmb_error_state_ptr->file = '\0';
         mmb_error_state_ptr->line = -1;

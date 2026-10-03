@@ -63,7 +63,7 @@ void cmd_mid(void) {
     if (start + (num < 0 ? 0 : num - 1) > sourcestring[0]) ERROR_SELECTION_EXCEEDS_LENGTH;
 
     // Find and consume '=' token.
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
 
     // Right hand side of expression.
     skipspace(cmdline);
@@ -111,7 +111,7 @@ void cmd_lmid(void) {
     if (num > 0 && start + num > length) ERROR_SELECTION_EXCEEDS_LENGTH;
 
     // Find and consume '=' token.
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
     skipspace(cmdline);
     if (!*cmdline) ERROR_SYNTAX;
     char *value = getstring(cmdline);

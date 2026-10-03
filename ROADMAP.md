@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap brings MMB4M up to date with the current MMBasic developments by Peter Mather.
+This roadmap brings MMB4M up to date with where MMBasic is today: the PicoMite, the Colour Maximite 2 and MMBasic for Windows. On the Mac, MMB4M does what suits a Mac best; started with `-s`, it runs a program written for one of those machines as that machine would.
 
 It is preliminary and can change as the work goes on.
 
@@ -24,6 +24,13 @@ Programs written for a current PicoMite use language features MMB4M does not hav
 - [x] Working on whole arrays in one statement. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
 - [x] Encryption and base64. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
 - [x] Saving and loading data, and more information about the running program. ([0.2.0](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.0))
+
+## 0.2.1: fixes
+
+- [x] Three ways to end a program, a copy that emptied a file, and letters such as `ä` or `é` that a string lost when a program was loaded. ([0.2.1](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.1))
+- [x] Loops that could pair with the wrong end, and static variables that two subroutines could share. ([0.2.1](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.1))
+- [x] Numbers above 8388607 cut instead of rounded when they become whole numbers. ([0.2.1](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.1))
+- [x] Wrong results from several `MATH` commands, from `TAB()`, `JSON$` and `EPOCH()`. ([0.2.1](https://github.com/TomSchimana/mmb4m/releases/tag/v0.2.1))
 
 ## 0.3: mouse, images and controls
 
@@ -69,7 +76,7 @@ Programs written for these machines run unchanged.
 
 Ideas that are not decided yet.
 
-- [ ] Limits of a chosen PicoMite model, so a program written for it runs into the same limits on the Mac.
+- [ ] With `-s`, the limits of a chosen PicoMite model, so a program written for it runs into the same limits on the Mac.
 
 ## Not planned
 

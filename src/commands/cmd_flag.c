@@ -54,7 +54,7 @@ void cmd_flag(void) {
     const uint64_t bit = (uint64_t) 1 << getint(argv[0], 0, 63);
 
     // Find and consume '=' token.
-    while (*cmdline && tokentbl_read(&cmdline) != tokenEQUAL) { }
+    while (*cmdline && tokentbl_read_text(&cmdline) != tokenEQUAL) { }
     skipspace(cmdline);
     if (!*cmdline) ERROR_SYNTAX;
     if (getint(cmdline, 0, 1)) mmb_flags |= bit; else mmb_flags &= ~bit;

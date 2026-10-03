@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *******************************************************************************/
 
+#include <ctype.h>
 #include <string.h>
 
 #include "../common/cstring.h"
@@ -101,6 +102,10 @@ void cmd_dim(void) {
             p = (char *) skipvar(argv[i], false);                   // point to after the variable
             FunctionToken funtok = INVALID_TOKEN;
             while (*p != 0 && *p != '\'') {                         // skip over a LENGTH keyword if there and see if we can find "AS"
+                if (*p == '"') {                                    // a string's bytes are not tokens
+                    tokentbl_read_text((const char **) &p);
+                    continue;
+                }
                 funtok = tokentbl_peek(p);
                 if (funtok == tokenAS || funtok == tokenEQUAL) break;
                 p += tokensize(funtok);
@@ -118,27 +123,38 @@ void cmd_dim(void) {
                 type |= V_LOCAL;                                    // local if defined in a sub/fun
             }
 
+            // The data of a STATIC is a global variable of the same name, owned
+            // by the SUB or FUNCTION it is declared in (vartbl_owner), and so
+            // apart from other variables and from other routines' statics.
+            int16_t owner = 0;
             if (cmdtoken == cmdSTATIC) {
                 if (LocalIndex == 0) error_throw_legacy("Invalid here");
-                // Create a unique global name by prefixing variable name with sub/fun name.
+                // The routine this runs in is the innermost call frame that has
+                // one (a GOSUB has none).
                 const char *def = NULL;
                 for (k = gosubindex - 1; k >= 0 && def == NULL; k--) def = substack[k];
                 if (def == NULL) error_throw_legacy("Invalid here");
                 def += sizeof(CommandToken);
                 skipspace(def);
-                for (k = 0; k < MAXVARLEN && isnamechar(def[k]); k++) VarName[k] = def[k];
-                VarName[k] = 0;
-                if (FAILED(cstring_cat(VarName, argv[i], sizeof(VarName)))) ERROR_LINE_LENGTH;
+                char routine[MAXVARLEN + 1];
+                for (k = 0; k < MAXVARLEN && isnamechar(def[k]); k++) routine[k] = toupper(def[k]);
+                routine[k] = 0;
+                int fun_idx = -1;
+                if (funtbl_find(routine, kFunction | kSub, &fun_idx) != kOk) error_throw_legacy("Invalid here");
+                owner = (int16_t) (fun_idx + 1);
                 StaticVar = true;
-            } else {
-                if (FAILED(cstring_cpy(VarName, argv[i], sizeof(VarName)))) ERROR_LINE_LENGTH;
             }
+            if (FAILED(cstring_cpy(VarName, argv[i], sizeof(VarName)))) ERROR_LINE_LENGTH;
 
+            vartbl_owner = owner;
             v = findvar(VarName, type | V_NOFIND_NULL);             // check if the variable exists
+            vartbl_owner = 0;
             typeSave = type;
             VIndexSave = VarIndex;
             if(v == NULL) {                                         // if not found
+                vartbl_owner = owner;
                 v = findvar(VarName, type | V_FIND | V_DIM_VAR);    // create the variable
+                vartbl_owner = 0;
                 type = TypeMask(vartbl[VarIndex].type);
                 VIndexSave = VarIndex;
                 *chPosit = chSave;                                  // restore the char previously removed
@@ -149,7 +165,7 @@ void cmd_dim(void) {
                 }
                 FunctionToken funtok = INVALID_TOKEN;
                 while (*p != 0 && *p != '\'' && funtok != tokenEQUAL) {  // search through the line looking for the equals sign
-                    funtok = tokentbl_read((const char **) &p);
+                    funtok = tokentbl_read_text((const char **) &p);  // a string's bytes are not tokens
                 }
                 if (funtok == tokenEQUAL) {
                     skipspace(p);

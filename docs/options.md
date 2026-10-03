@@ -8,6 +8,8 @@ Most of `OPTION` behaves as the PicoMite manual says. These are the ones that ma
 
 `OPTION CODEPAGE` decides how bytes 128 to 255 are printed. A terminal is Unicode and a Colour Maximite 2 screen is not, so a CMM2 program drawing boxes prints the wrong characters until this is set. `CMM2` maps them as closely as the CMM2 font allows. The others are `CP437`, `CP1252`, `MMB4L` and `NONE`.
 
+`OPTION TAB` sets the distance of the tab stops, 4 by default. `LINE INPUT #` turns a tab it reads from a file into spaces up to the next stop, as the PicoMite and MMBasic for Windows do with a fixed 4. `INPUT$()` returns a file's tabs as they are.
+
 `OPTION AUTOSCALE OFF` stops a simulated device's window being scaled up to fill the display. It is on by default.
 
 ## What runs

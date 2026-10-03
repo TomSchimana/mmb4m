@@ -74,7 +74,10 @@ void cmd_end(void) {
             memcpy(mmb_end_command, s + 1, (unsigned char) s[0]);
             mmb_end_command[(unsigned char) s[0]] = '\0';
         } else {
-            mmb_state.exit_code = getint(argv[0], 0, 255);
+            // the value is already there, a second evaluation would run a FUNCTION twice
+            const MMINTEGER code = (t & T_INT) ? i : FloatToInt64(f);
+            if (code < 0 || code > 255) error_throw_legacy("% is invalid (valid is 0 to 255)", code);  // as getint() says it
+            mmb_state.exit_code = (uint8_t) code;
         }
     }
     if (!noend && !in_mm_end && FindSubFun("MM.END", kSub) >= 0) {

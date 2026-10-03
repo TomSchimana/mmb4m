@@ -137,7 +137,10 @@ char console_putc(char c) {
         printable = true;
     } else {
         console_putc_raw(c);
-        if (isprint(c)) {
+        if (isprint(c) || (unsigned char) c >= 0xC0) {
+            // A UTF-8 character is counted as one column, at its first byte;
+            // the bytes that follow it, 0x80 to 0xBF, take none. A wide one
+            // such as CJK takes two on screen and is still counted as one.
             printable = true;
         } else {
             switch (c) {
@@ -146,6 +149,14 @@ char console_putc(char c) {
                     break;
                 case '\r':
                     self.x = 0;
+                    break;
+                case '\t':
+                    // The terminal moves to its next tab stop, every 8 columns,
+                    // and stops at the last column.
+                    if (self.x < self.width) {
+                        self.x = (self.x / 8 + 1) * 8;
+                        if (self.x > self.width - 1) self.x = self.width - 1;
+                    }
                     break;
                 case '\n':
                     self.y++;
