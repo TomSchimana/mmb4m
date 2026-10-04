@@ -77,7 +77,7 @@ The language is MMBasic 6, and each machine's page carries its current user manu
 | Serial | Nothing above 230400 baud; macOS defines no higher rate, and setting one fails. Ports are named `/dev/cu.*`, which `ls /dev/cu.*` lists | [Differences](docs/differences.md) |
 | Timing | macOS is not a real-time system, so `PAUSE` and `SETTICK` drift more than on a microcontroller. `SETTICK` works, `SETTICK FAST` does not | [Differences](docs/differences.md) |
 | Limits | 128 MB for variables, arrays and strings, 1 MB of program, 2048 variables and 128 open files, the figures of MMBasic for Windows | [Limits](docs/limits.md) |
-| This version | 0.2.0, one known defect (pasting into the editor), and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
+| This version | 0.2.1, four known defects, among them pasting into the editor, and a list of what has been tried on a Mac and what has not | [Known problems](docs/known-issues.md) |
 | Building it | One `make`, with the Xcode Command Line Tools and cmake. SDL2 is compiled in, so the result is a single file | [Building MMB4M](docs/building.md) |
 
 ## This is not an official release
